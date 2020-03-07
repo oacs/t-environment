@@ -1,0 +1,22 @@
+from PySimpleGUI import PopupGetFile
+
+PopupGetFile("message",
+             title="Selecting env file",
+             default_path="",
+             default_extension="",
+             save_as=False,
+             multiple_files=False,
+             file_types=(('ALL Files', '*.envbot'),),
+             no_window=False,
+             size=(None, None),
+             button_color=None,
+             background_color=None,
+             text_color=None,
+             icon=None,
+             font=None,
+             no_titlebar=False,
+             grab_anywhere=False,
+             keep_on_top=False,
+             location=(None, None),
+             initial_folder=None,
+             )
