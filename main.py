@@ -15,7 +15,7 @@ layout = [
 
 # Create the Window
 window = sg.Window('UCAB-Bot Environment', layout, location=(0, 0),
-                   size=(1500, 900), resizable=True, keep_on_top=True, background_color=DARK).Finalize()
+                   size=(1500, 900), resizable=True, background_color=DARK).Finalize()
 # window.Maximize()
 env_process = EnvProcess()
 # Event Loop to process "events" and get the "values" of the inputs
