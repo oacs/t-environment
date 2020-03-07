@@ -1,0 +1,5 @@
+DARK = "#5d576b"
+BLACK = "#070600"
+WHITE = "#faf9f9"
+INFO = "#058ed9"
+DANGER = "#ea526f"
