@@ -12,12 +12,15 @@ def slope(pt1, pt2):
 
 def offset_rect(pt1, m):
     """ Calc B of y = mx + B """
-    return pt1[1] - (m*pt1[0])
+    return pt1[1] - (m * pt1[0])
 
 
 def delta_x_y(m, b, pnt):
     """ calc  dx for y and dy for dx on a rect """
-    dx = (pnt[1]-b) / m
+    try:
+        dx = (pnt[1] - b) / m
+    except ZeroDivisionError:
+        dx = pnt[1]
     dy = ((m * pnt[0]) + b)
     return dx, dy
 
@@ -52,12 +55,12 @@ def is_clockwise(m, orientation, top, pnt):
             return -1 * orientation
         elif top[0] > pnt[0] and top[1] > pnt[1]:
             return 1 * orientation
-    print(m, orientation, top, pnt)
+    return 1
 
 
 def distance(p0, p1):
     """ Calculate the distance in px of two points"""
-    return math.sqrt((p0[0] - p1[0])**2 + (p0[1] - p1[1])**2)
+    return math.sqrt((p0[0] - p1[0]) ** 2 + (p0[1] - p1[1]) ** 2)
 
 
 def between_pt(p0, p1):
@@ -65,7 +68,7 @@ def between_pt(p0, p1):
     return int((p0[0] + p1[0]) / 2), int((p0[1] + p1[1]) / 2)
 
 
-class Triangle():
+class Triangle:
     """ Class for triangle found on the environment """
     contours: list
     position: tuple
@@ -73,7 +76,7 @@ class Triangle():
     top: tuple
     color: Colors
 
-    def __init__(self, contours, position, color):
+    def __init__(self, contours=None, position=(-1, -1), color=None):
         self.contours = contours
         self.position = position
         if self.is_valid():
@@ -112,8 +115,8 @@ class Triangle():
 
         if point_line == 0 or triangle_line == 0:
             return 0
-        value = math.acos((point_line**2 - aux_line**2 + triangle_line **
-                           2) / (2*point_line*triangle_line)) * 180 / math.pi
+        value = math.acos((point_line ** 2 - aux_line ** 2 + triangle_line **
+                           2) / (2 * point_line * triangle_line)) * 180 / math.pi
 
         m = slope(self.top, pnt)
         b = offset_rect(self.top, m)
@@ -149,13 +152,13 @@ def get_triangle(frame, config=PURPLE_CONF, prev_pos=False):
             x = approx.ravel()[0]
             y = approx.ravel()[1]
             approx = cv2.approxPolyDP(
-                cnt, (config.arc/100)*cv2.arcLength(cnt, True), True)
+                cnt, (config.arc / 100) * cv2.arcLength(cnt, True), True)
             cv2.polylines(frame, approx, True, 255, 5)
             if len(approx) == 3:
                 # cv2.polylines(frame, approx, True, 255, 5)
                 triangle = Triangle(
                     approx, (x, y), config.color)
-                cv2.circle(mask, triangle.top, 12, 255)
+                # cv2.circle(mask, triangle.top, 12, 255)
 
     # cv2.imshow('mas02k', mask)
     # cv2.imshow('frame-triangle', frame)
