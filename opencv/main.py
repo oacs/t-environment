@@ -151,10 +151,10 @@ class EnvProcess:
         """ Main """
         frame = self.video.read()
         borders = check_for_borders(self.video)
-        borders = [(0, 0), (100, 100)]
+        # borders = [(0, 0), (100, 100)]
         config_zone = [(0, 0), (borders[1][0] + 150, borders[1][1] + 250)]
         print("Starting Gen")
-        # createTrackbar()
+        # create_trackbar()
         while True:
             frame = self.video.read()
             cropped = crop_frame(frame, borders)
@@ -169,25 +169,22 @@ class EnvProcess:
                         KNOW_ANTS.insert(0, new_ant)
 
                 for ant_obj in KNOW_ANTS:
-                    time_since_last_update = (
-                                                     time.time() - ant_obj.last_update) * 1000
-                    ant_obj.draw_dest(cropped)
-                    # GREEN_CONF.get_mask(frame, True)
+                    time_since_last_update = (time.time() - ant_obj.last_update) * 1000
                     dest = get_triangle(cropped, GREEN_CONF)
 
                     if dest.is_valid():
                         ant_obj.destination = dest.center
                         ant_obj.send_dist(dest.center)
 
+                    ant_obj.draw_dest(frame, borders[1])
                     if time_since_last_update < 480:
                         continue
                     else:
                         ant_obj.update(cropped, triangle,
                                        time_since_last_update)
-
             if len(borders) == 2:
                 cv2.rectangle(
-                    cropped, config_zone[0], config_zone[1], 200)
+                    frame, borders[0], borders[1], 200)
             # cv2.imshow('frame', res)
             # cv2.imshow('mask', mask)
             # cv2.imshow('crop', cropped)
