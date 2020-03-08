@@ -9,6 +9,8 @@ import cv2
 from bluepy.btle import Peripheral
 from opencv.forms.color import Colors
 from opencv.forms.triangle import Triangle, distance
+from opencv.forms.utils import FONT
+
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 LOGGER = logging.getLogger("agent")
 SENSOR_SERVICE = UUID("218EE492-8AFB-4CA6-93B6-2D0DBF2F00FE")
@@ -87,15 +89,18 @@ class Agent:
     sending: Updatable
     address: str
     triangle: Triangle
+    distance: float
+    rotation: float
     __configured: bool
 
-    def __init__(self, address,):
+    def __init__(self, address, ):
         # self.radius is an instance variable
         self.configured = False
         self.address = address
         self.last_update = time.time()
         self.chars = self.connect()
         self.sending = Updatable()
+        self.triangle = Triangle()
         self.set_config()
 
     def connect(self):
@@ -140,9 +145,9 @@ class Agent:
     def send_rotation(self):
         """ Convert the rotation(float) to byte array and send via BLE """
         if self.sending.rotation:
-            rotation = self.triangle.calc_rotation(
+            self.rotation = self.triangle.calc_rotation(
                 self.destination)
-            b_rotation = pack("f", rotation)
+            b_rotation = pack("f", self.rotation)
             # print(rotation)
             self.con.writeCharacteristic(
                 self.chars.rotation, b_rotation, withResponse=True)
@@ -160,7 +165,7 @@ class Agent:
 
         # Calc speed
         self.speed = distance(
-            self.triangle.center, self.xy)/time_since_last_update
+            self.triangle.center, self.xy) / time_since_last_update
 
         # update Time
         self.last_update = time.time()
@@ -188,9 +193,32 @@ class Agent:
             self.con.writeCharacteristic(
                 self.chars.com, "0".encode(), withResponse=True)
 
-    def draw_dest(self, frame):
+    def draw_dest(self, frame, offset=(0, 0)):
         """ Draw the destination with a circle and a line from top to pnt """
+        if self.destination[0] != -1 and self.triangle.is_valid():
+            cv2.line(frame, tuple(map(sum, zip(self.triangle.center, offset))),
+                     tuple(map(sum, zip(self.triangle.top, offset))), (200, 150, 50), 2)
+            cv2.line(frame, tuple(map(sum, zip(self.triangle.top, offset))),
+                     tuple(map(sum, zip(self.destination, offset))), (200, 150, 50), 2)
+            cv2.circle(frame, tuple(map(sum, zip(self.destination, offset))), 5, 200, 1)
+
+    def draw_distance(self, frame, offset=(0, 0)):
+        """ Draw the distance with a circle and a line from top to pnt """
         if self.destination[0] != -1:
-            cv2.line(frame, self.triangle.top,
-                     self.destination, 200, 1)
-            cv2.circle(frame, self.destination, 5, 200, 1)
+            cv2.line(frame, tuple(map(sum, zip(self.triangle.center, offset))),
+                     tuple(map(sum, zip(self.triangle.top, offset))), (200, 150, 50), 2)
+            cv2.putText(frame,
+                        ('%.2f' % (distance(self.triangle.center, self.destination) / 5)) + " cm", self.destination,
+                        FONT, 1,
+                        255)
+
+    def draw_rotation(self, frame, offset=(0, 0)):
+        """ Draw the rotation with a circle and a line from top to pnt """
+        if self.destination[0] != -1:
+            cv2.line(frame, tuple(map(sum, zip(self.triangle.center, offset))),
+                     tuple(map(sum, zip(self.destination, offset))), (200, 150, 50), 2)
+            cv2.line(frame, tuple(map(sum, zip(self.triangle.center, offset))),
+                     tuple(map(sum, zip(self.triangle.top, offset))), (200, 150, 50), 2)
+            cv2.putText(frame,
+                        ('%.2f' % self.rotation) + " C*", self.destination, FONT, 1,
+                        255)
