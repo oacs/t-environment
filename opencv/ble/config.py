@@ -22,42 +22,42 @@ def find_ant(know_ants):
 
 
 def connect(ant_address, color):
-    """ Connecto to ant and se the config """
+    """ Connect to to ant and se the config """
     print("Connecting")
 
     ant = Peripheral(deviceAddr=ant_address)
     print("Connected")
     services = ant.getServices()
     print("Fetched services")
-    for serv in services:
-        print(serv)
-        if (serv.uuid == SENSOR_SERVICE):
+    for service in services:
+        print(service)
+        if service.uuid == SENSOR_SERVICE:
             print("Found sensor service")
-            chars = serv.getCharacteristics()
+            chars = service.getCharacteristics()
             print("Found chars", chars)
             for char in chars:
                 print(char, char.getHandle())
-                if (char.uuid == POSITION_CHAR):
+                if char.uuid == POSITION_CHAR:
                     position_char = char.getHandle()
                     continue
-                if (char.uuid == CONFIG_CHAR):
+                if char.uuid == CONFIG_CHAR:
                     config_char = char.getHandle()
                     continue
-                if (char.uuid == COLOR_CHAR):
-                    readed_color = ant.readCharacteristic(
+                if char.uuid == COLOR_CHAR:
+                    read_color = ant.readCharacteristic(
                         char.getHandle()).decode()
-                if (char.uuid == DEBUG_CHAR):
+                if char.uuid == DEBUG_CHAR:
                     debug_char = char.getHandle()
-                if (char.uuid == COM_CHAR):
+                if char.uuid == COM_CHAR:
                     com_char = char.getHandle()
-                if (char.uuid == ROTATION_CHAR):
+                if char.uuid == ROTATION_CHAR:
                     rotation_char = char.getHandle()
-    if (color == readed_color):
+    if color == read_color:
 
         print("setting cng")
         ant.writeCharacteristic(
             config_char, str.encode("cng"), withResponse=True)
-        print("setted cng")
+        print("set cng")
         chars = {
             "position": position_char,
             "debug": debug_char,

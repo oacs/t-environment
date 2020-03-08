@@ -1,18 +1,17 @@
-from PySimpleGUI import Button, TRANSPARENT_BUTTON
-from theme import WHITE, DARK
+from PySimpleGUI import Button, Window
+from theme import WHITE
 
-on_play = False
 action_layout = [
     Button(
         button_text="",
         tooltip="Play the simulation",
         bind_return_key="space",
-        button_color=[DARK, DARK],
+        button_color=[WHITE, WHITE],
         image_filename="assets/img/play.png",
         image_size=[35, 35],
         border_width=0,
         key="action_play_pause",
-        disabled=(on_play),
+        disabled=False,
         metadata={
             "status": "play"
         }
@@ -21,7 +20,7 @@ action_layout = [
         button_text="",
         tooltip="Play the simulation",
         bind_return_key="space",
-        button_color=[DARK, DARK],
+        button_color=[WHITE, WHITE],
         image_filename="assets/img/save.png",
         image_size=[35, 35],
         border_width=0,
@@ -30,10 +29,8 @@ action_layout = [
 ]
 
 
-def action_events(event, value, window):
-    if (event == "action_play_pause"):
-        print(window["action_play_pause"].metadata,
-              )
+def action_events(event, value, window: Window):
+    if event == "action_play_pause":
         if window["action_play_pause"].metadata["status"] == "pause":
             window["action_play_pause"].metadata["status"] = "play"
         else:

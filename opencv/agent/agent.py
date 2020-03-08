@@ -39,34 +39,34 @@ class Characteristics():
 
     def __init__(self, chars):
         for char in chars:
-            if (char.uuid == EnumChars.position.value):
+            if char.uuid == EnumChars.position.value:
                 self.position = char.getHandle()
                 continue
-            if (char.uuid == EnumChars.config.value):
+            if char.uuid == EnumChars.config.value:
                 self.config = char.getHandle()
                 continue
-            if (char.uuid == EnumChars.color.value):
+            if char.uuid == EnumChars.color.value:
                 self.color = char.getHandle()
                 continue
-            if (char.uuid == EnumChars.debug.value):
+            if char.uuid == EnumChars.debug.value:
                 self.debug = char.getHandle()
                 continue
-            if (char.uuid == EnumChars.com.value):
+            if char.uuid == EnumChars.com.value:
                 self.com = char.getHandle()
                 continue
-            if (char.uuid == EnumChars.rotation.value):
+            if char.uuid == EnumChars.rotation.value:
                 self.rotation = char.getHandle()
                 continue
-            if (char.uuid == EnumChars.dest.value):
+            if char.uuid == EnumChars.dest.value:
                 self.dest = char.getHandle()
                 continue
 
 
-class Service():
+class Service:
     """ Service that an agent offers """
 
 
-class Updatable():
+class Updatable:
     """ Values that the server send to the agent """
     rotation = False
 
@@ -75,8 +75,8 @@ class Updatable():
         self.rotation = False
 
 
-class Agent():
-    """ Agent with sensor values and methods to comunicate """
+class Agent:
+    """ Agent with sensor values and methods to communicate """
     color: Colors
     chars: Characteristics
     destination = (-1, -1)
@@ -99,7 +99,7 @@ class Agent():
         self.set_config()
 
     def connect(self):
-        """ Connecto to ant and se the config """
+        """ Connect to to ant and se the config """
 
         LOGGER.debug("Connecting")
         self.con = Peripheral(deviceAddr=self.address)
@@ -109,7 +109,7 @@ class Agent():
 
         LOGGER.debug("Fetched services")
         for serv in services:
-            if (serv.uuid == SENSOR_SERVICE):
+            if serv.uuid == SENSOR_SERVICE:
                 LOGGER.debug("Found sensor service")
                 chars = serv.getCharacteristics()
                 LOGGER.debug("Found chars:")
@@ -131,14 +131,14 @@ class Agent():
         LOGGER.debug("setted cng")
 
     def send_pos(self):
-        """ Conver the position(touple) to byte array and sended via BLE """
+        """ Convert the position(tuple) to byte array and send via BLE """
         b_position = pack(
             "ii", self.triangle.position[0], self.triangle.position[1])
         self.con.writeCharacteristic(
             self.chars.position, b_position, withResponse=True)
 
     def send_rotation(self):
-        """ Conver the rotation(float) to byte array and sended via BLE """
+        """ Convert the rotation(float) to byte array and send via BLE """
         if self.sending.rotation:
             rotation = self.triangle.calc_rotation(
                 self.destination)
@@ -148,7 +148,7 @@ class Agent():
                 self.chars.rotation, b_rotation, withResponse=True)
 
     def send_dist(self, dest):
-        """ Conver the dist(touple) to byte array and sended via BLE """
+        """ Convert the dist(tuple) to byte array and send via BLE """
         b_dest = pack(
             "ii", dest[0], dest[1])
         self.con.writeCharacteristic(

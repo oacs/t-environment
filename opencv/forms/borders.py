@@ -1,11 +1,13 @@
 import numpy as np
 import cv2
 
+from opencv.main import get_approx_xy
+
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 
 
 def get_rect_borders(frame):
-    """ Returns an array of borders(touples with x and y) """
+    """ Returns an array of borders(tuples with x and y) """
     # Turn no HSV
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     config = {
@@ -19,7 +21,7 @@ def get_rect_borders(frame):
         # Ucab
         # "min_area": 400,
         # "max_area": 600,
-        # Casa de maria
+        # Maria's house
         "min_area": 900,
         "max_area": 1400,
     }
@@ -35,7 +37,7 @@ def get_rect_borders(frame):
         [config["max_hue"], config["max_sat"], config["max_bri"]])
     # Create mask
     mask = cv2.inRange(hsv, lower_hsv, higher_hsv)
-    # Blurr image
+    # Blur image
 
     mask = cv2.GaussianBlur(mask, (5, 5), 1)
 
@@ -45,16 +47,12 @@ def get_rect_borders(frame):
     rect_borders = []
     for cnt in contours:
         area = cv2.contourArea(cnt)
-        if area > config["min_area"] and area < config["max_area"]:
+        if config["min_area"] < area < config["max_area"]:
             approx = cv2.approxPolyDP(
-                cnt, (config["arc"]/100)*cv2.arcLength(cnt, True), True)
-            cv2.polylines(mask, approx, True, 255, 5)
-            x = approx.ravel()[0]
-            y = approx.ravel()[1]
-            cv2.putText(mask, "Rectangle " + str(area),
-                        (x, y), FONT, 1, (255))
+                cnt, (config["arc"] / 100) * cv2.arcLength(cnt, True), True)
+            pos = get_approx_xy(approx, area, mask)
             if len(approx) == 4:
-                rect_borders.append((x, y))
+                rect_borders.append(pos)
     # cv2.imshow('mas02k', mask)
     # cv2.imshow('frame', frame)
 

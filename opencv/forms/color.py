@@ -31,13 +31,13 @@ class ColorFilter():
         self.max_area = max_area
         self.color = color
 
-    def get_mask(self, frame, print=False):
+    def get_mask(self, frame, debug=False):
         """ Get the mask for the color """
         # Define min and max values
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         # Create mask
         mask = cv2.inRange(hsv, self.low_hsb, self.max_hsb)
-        if print:
+        if debug:
             cv2.imshow(self.color.value + " mask", mask)
         return mask
 

@@ -12,7 +12,7 @@ from opencv.agent.agent import Agent
 
 
 class VideoCapture:
-    """ bufferless VideoCapture """
+    """ buffer-less VideoCapture """
 
     def __init__(self, name, auto, focus):
         self.cap = cv2.VideoCapture(name)
@@ -31,7 +31,7 @@ class VideoCapture:
                 break
             if not self.queue.empty():
                 try:
-                    self.queue.get_nowait()   # discard previous (unprocessed) frame
+                    self.queue.get_nowait()  # discard previous (unprocessed) frame
                 except queue.Empty:
                     pass
             self.queue.put(frame)
@@ -43,7 +43,7 @@ class VideoCapture:
 
 def is_inside_rect(point, rect):
     """ Check if a point is inside a rect"""
-    return point[1] >= rect[0][1] and point[1] <= rect[1][1] and point[0] >= rect[0][0] and point[0] <= rect[1][0]
+    return rect[0][1] <= point[1] <= rect[1][1] and rect[0][0] <= point[0] <= rect[1][0]
 
 
 # from kinnect import capture
@@ -64,7 +64,7 @@ rgb = 0
 KNOW_ANTS = list()
 
 
-def createTrackbar():
+def create_trackbar():
     """ Create Trackbar window """
     cv2.namedWindow('image')
 
@@ -101,7 +101,7 @@ def callback(x):
     pass
 
 
-def checkForBorders():
+def check_for_borders():
     """ ask for borders """
     print("Looking for borders")
     while True:
@@ -129,75 +129,27 @@ def test_mask(frame):
         mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     for cnt in contours:
         area = cv2.contourArea(cnt)
-        if area > 200 and area < 600:
+        if 200 < area < 600:
             # if area < 10 or area > 100:
             #     break
             approx = cv2.approxPolyDP(
-                cnt, (arc/100)*cv2.arcLength(cnt, True), True)
+                cnt, (arc / 100) * cv2.arcLength(cnt, True), True)
             # cv2.drawContours(res, [approx], 0, (255), 5)
-            cv2.polylines(res, approx, True, 255, 5)
-            x = approx.ravel()[0]
-            y = approx.ravel()[1]
-
-            cv2.putText(res, "Rectangle " + str(area),
-                        (x, y), FONT, 1, (255))
+            pos = get_approx_xy(approx, area, res)
     return res, mask
 
 
-def gen():
-    """ Main """
-    frame = VIDEO.read()
-    borders = checkForBorders()
-    config_zone = [(0, 0), (borders[1][0]+150, borders[1][1]+250)]
-    print("Starting Gen")
-    createTrackbar()
-    while True:
-        frame = VIDEO.read()
-        cropped = crop_frame(frame, borders)
-        res, mask = test_mask(frame)
-        triangle = get_triangle(cropped)
-
-        if (triangle.is_valid()):
-            # cv2.line(cropped, triangle.top, triangle.center, 255, 2)
-            if is_inside_rect(triangle.center, config_zone):
-                if (len(KNOW_ANTS) == 0):
-                    new_ant = Agent(find_ant(KNOW_ANTS))
-                    KNOW_ANTS.insert(0, new_ant)
-
-            for ant_obj in KNOW_ANTS:
-                time_since_last_update = (
-                    time.time() - ant_obj.last_update)*1000
-                ant_obj.draw_dest(cropped)
-                # GREEN_CONF.get_mask(frame, True)
-                dest = get_triangle(cropped, GREEN_CONF)
-
-                if (dest.is_valid()):
-                    ant_obj.destination = dest.center
-                    ant_obj.send_dist(dest.center)
-
-                if (time_since_last_update < 480):
-                    continue
-                else:
-                    ant_obj.update(cropped, triangle, time_since_last_update)
-
-        if (len(borders) == 2):
-            cv2.rectangle(
-                cropped, config_zone[0], config_zone[1], 200)
-        # cv2.imshow('frame', res)
-        # cv2.imshow('mask', mask)
-        # cv2.imshow('crop', cropped)
-        if cv2.waitKey(10) == 27:
-            break
-
-        # input()
-        # (4) print the thresh, and save the result
-
-
-# gen()
+def get_approx_xy(approx, area, res):
+    cv2.polylines(res, approx, True, 255, 5)
+    x = approx.ravel()[0]
+    y = approx.ravel()[1]
+    cv2.putText(res, "Rectangle " + str(area),
+                (x, y), FONT, 1, 255)
+    return x, y
 
 
 class EnvProcess:
-    """ bufferless VideoCapture """
+    """ buffer-less VideoCapture """
 
     def __init__(self):
         self.queue = queue.Queue()
@@ -210,7 +162,7 @@ class EnvProcess:
         frame = VIDEO.read()
         # borders = checkForBorders()
         borders = [(0, 0), (100, 100)]
-        config_zone = [(0, 0), (borders[1][0]+150, borders[1][1]+250)]
+        config_zone = [(0, 0), (borders[1][0] + 150, borders[1][1] + 250)]
         print("Starting Gen")
         # createTrackbar()
         while True:
@@ -219,31 +171,31 @@ class EnvProcess:
             # res, mask = test_mask(frame)
             triangle = get_triangle(cropped)
 
-            if (triangle.is_valid()):
+            if triangle.is_valid():
                 # cv2.line(cropped, triangle.top, triangle.center, 255, 2)
                 if is_inside_rect(triangle.center, config_zone):
-                    if (len(KNOW_ANTS) == 0):
+                    if len(KNOW_ANTS) == 0:
                         new_ant = Agent(find_ant(KNOW_ANTS))
                         KNOW_ANTS.insert(0, new_ant)
 
                 for ant_obj in KNOW_ANTS:
                     time_since_last_update = (
-                        time.time() - ant_obj.last_update)*1000
+                                                     time.time() - ant_obj.last_update) * 1000
                     ant_obj.draw_dest(cropped)
                     # GREEN_CONF.get_mask(frame, True)
                     dest = get_triangle(cropped, GREEN_CONF)
 
-                    if (dest.is_valid()):
+                    if dest.is_valid():
                         ant_obj.destination = dest.center
                         ant_obj.send_dist(dest.center)
 
-                    if (time_since_last_update < 480):
+                    if time_since_last_update < 480:
                         continue
                     else:
                         ant_obj.update(cropped, triangle,
                                        time_since_last_update)
 
-            if (len(borders) == 2):
+            if len(borders) == 2:
                 cv2.rectangle(
                     cropped, config_zone[0], config_zone[1], 200)
             # cv2.imshow('frame', res)
@@ -252,7 +204,7 @@ class EnvProcess:
             # yield cropped, mask, res, frame
             if not self.queue.empty():
                 try:
-                    self.queue.get_nowait()   # discard previous (unprocessed) frame
+                    self.queue.get_nowait()  # discard previous (unprocessed) frame
                 except queue.Empty:
                     pass
             # print("gen")

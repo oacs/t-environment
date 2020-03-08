@@ -6,7 +6,7 @@ from opencv.forms.color import PURPLE_CONF, Colors
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 
 
-def pendiente(pt1, pt2):
+def slope(pt1, pt2):
     return (pt1[1] - pt2[1]) / (pt1[0] - pt2[0])
 
 
@@ -26,31 +26,31 @@ def up_or_down(dx, dy, pnt, m):
     """  Check if one point is upper or down an rect """
     # if(dx == 0 or dy == 0):
     #     return 0
-    if (m > 0):
-        if (pnt[0] < dx and pnt[1] > dy):
+    if m > 0:
+        if pnt[0] < dx and pnt[1] > dy:
             return 1
-        elif (pnt[0] > dx and pnt[1] < dy):
+        elif pnt[0] > dx and pnt[1] < dy:
             return -1
     else:
-        if ((pnt[0] < dx) and (pnt[1] < dy)):
+        if (pnt[0] < dx) and (pnt[1] < dy):
             return -1
-        elif (pnt[0] > dx and pnt[1] > dy):
+        elif pnt[0] > dx and pnt[1] > dy:
             return 1
     print(dx, dy, pnt, m, pnt[0] < dx, pnt[1] < dy)
     return 0
 
 
-def clock_or_anticlock(m, orientation, top, pnt):
-    """ check in wich direction is need it to turn """
-    if (m < 0):
-        if (top[0] < pnt[0] and top[1] > pnt[1]):
+def is_clockwise(m, orientation, top, pnt):
+    """ check in which direction is need it to turn """
+    if m < 0:
+        if top[0] < pnt[0] and top[1] > pnt[1]:
             return -1 * orientation
-        elif (top[0] > pnt[0] and top[1] < pnt[1]):
+        elif top[0] > pnt[0] and top[1] < pnt[1]:
             return 1 * orientation
     else:
-        if (top[0] < pnt[0] and top[1] < pnt[1]):
+        if top[0] < pnt[0] and top[1] < pnt[1]:
             return -1 * orientation
-        elif (top[0] > pnt[0] and top[1] > pnt[1]):
+        elif top[0] > pnt[0] and top[1] > pnt[1]:
             return 1 * orientation
     print(m, orientation, top, pnt)
 
@@ -62,7 +62,7 @@ def distance(p0, p1):
 
 def between_pt(p0, p1):
     """ Calculate the point between two points"""
-    return (int((p0[0]+p1[0])/2), int((p0[1]+p1[1])/2))
+    return int((p0[0] + p1[0]) / 2), int((p0[1] + p1[1]) / 2)
 
 
 class Triangle():
@@ -76,7 +76,7 @@ class Triangle():
     def __init__(self, contours, position, color):
         self.contours = contours
         self.position = position
-        if (self.is_valid()):
+        if self.is_valid():
             self.top, self.center = self.calc_top_center()
         self.color = color
 
@@ -86,13 +86,13 @@ class Triangle():
         distance2 = distance(self.contours[1][0], self.contours[2][0])
         distance3 = distance(self.contours[0][0], self.contours[2][0])
         minor = min(distance1, distance2, distance3)
-        if(minor == distance1):
+        if minor == distance1:
             top = self.contours[2][0]
             center = between_pt(self.contours[0][0], self.contours[1][0])
-        elif(minor == distance2):
+        elif minor == distance2:
             top = self.contours[0][0]
             center = between_pt(self.contours[2][0], self.contours[1][0])
-        elif(minor == distance3):
+        elif minor == distance3:
             top = self.contours[1][0]
             center = between_pt(self.contours[0][0], self.contours[2][0])
         top = (top[0], top[1])
@@ -115,15 +115,15 @@ class Triangle():
         value = math.acos((point_line**2 - aux_line**2 + triangle_line **
                            2) / (2*point_line*triangle_line)) * 180 / math.pi
 
-        m = pendiente(self.top, pnt)
+        m = slope(self.top, pnt)
         b = offset_rect(self.top, m)
         dx, dy = delta_x_y(m, b, self.center)
         orientation = up_or_down(dx, dy, self.center, m)
-        return value * clock_or_anticlock(m, orientation, self.top, pnt) * -1
+        return value * is_clockwise(m, orientation, self.top, pnt) * -1
 
 
 def get_triangle(frame, config=PURPLE_CONF, prev_pos=False):
-    """ Returns an array of borders(touples with x and y) """
+    """ Returns an array of borders(tuples with x and y) """
     # AREA = 100
     # # Turn no HSV
     if prev_pos:
@@ -137,7 +137,7 @@ def get_triangle(frame, config=PURPLE_CONF, prev_pos=False):
     # hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     mask = config.get_mask(frame)
-    # Blurr image
+    # Blur image
     # mask = cv2.GaussianBlur(mask, (5, 5), 1)
     contours, _ = cv2.findContours(
         mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
@@ -145,7 +145,7 @@ def get_triangle(frame, config=PURPLE_CONF, prev_pos=False):
     for cnt in contours:
         area = cv2.contourArea(cnt)
         approx = cv2.convexHull(cnt)
-        if area > config.min_area and area < config.max_area:
+        if config.min_area < area < config.max_area:
             x = approx.ravel()[0]
             y = approx.ravel()[1]
             approx = cv2.approxPolyDP(
@@ -158,5 +158,5 @@ def get_triangle(frame, config=PURPLE_CONF, prev_pos=False):
                 cv2.circle(mask, triangle.top, 12, 255)
 
     # cv2.imshow('mas02k', mask)
-    # cv2.imshow('frametriangle', frame)
+    # cv2.imshow('frame-triangle', frame)
     return triangle
