@@ -16,15 +16,15 @@ actions = sg.Column(layout=[action_layout],
 layout = [
     [menu_el],
     [actions],
-    []
+    [graph]
 ]
 
 # Create the Window
 window = sg.Window('UCAB-Bot Environment', layout, location=(0, 0), margins=(0, 0),
                    size=(1500, 900), resizable=True, background_color=DARK).Finalize()
 
-graph_elem = window['-GRAPH-']  # type sg.Graph
-env_process = EnvProcess()
+graph_elem = window['GRAPH']  # type sg.Graph
+env_process = EnvProcess(2, 0, 4)
 actions.expand(expand_x=True)
 
 # Event Loop to process "events" and get the "values" of the inputs

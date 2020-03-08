@@ -12,10 +12,10 @@ def graph_events(event, values, window: Window, read):
     if window["GRAPH"].metadata["a_id"]:
         # delete previous image
         window["GRAPH"].delete_figure(window["GRAPH"].metadata["a_id"])
-    a_id = window["GRAPH"].draw_image(
+    window["GRAPH"].metadata["a_id"] = window["GRAPH"].draw_image(
         data=img_bytes, location=(0, 0))    # draw new image
     # move image to the "bottom" of all other drawings
-    window["GRAPH"].TKCanvas.tag_lower(a_id)
+    window["GRAPH"].TKCanvas.tag_lower(window["GRAPH"].metadata["a_id"])
 
     if event == 'GRAPH':
         window["GRAPH"].draw_circle(

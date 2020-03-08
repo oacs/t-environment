@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 
-from opencv.main import get_approx_xy
+from opencv.forms.utils import approx_xy
 
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -50,7 +50,7 @@ def get_rect_borders(frame):
         if config["min_area"] < area < config["max_area"]:
             approx = cv2.approxPolyDP(
                 cnt, (config["arc"] / 100) * cv2.arcLength(cnt, True), True)
-            pos = get_approx_xy(approx, area, mask)
+            pos = approx_xy(approx, area, mask)
             if len(approx) == 4:
                 rect_borders.append(pos)
     # cv2.imshow('mas02k', mask)

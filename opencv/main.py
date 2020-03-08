@@ -9,6 +9,7 @@ from opencv.forms.borders import get_rect_borders, crop_frame
 from opencv.forms.triangle import get_triangle, distance
 from opencv.forms.color import GREEN_CONF
 from opencv.agent.agent import Agent
+from opencv.forms.utils import approx_xy
 
 
 class VideoCapture:
@@ -49,22 +50,19 @@ def is_inside_rect(point, rect):
 # from kinnect import capture
 FONT = cv2.FONT_HERSHEY_COMPLEX
 # app = Flask(__name__)
-VIDEO = VideoCapture(0, 0, 4)
-
-low_hue = 0
-high_hue = 255
-low_sat = 0
-high_sat = 255
-low_bri = 0
-high_bri = 255
-blur = 0
-arc = 0
-rgb = 0
+# VIDEO = VideoCapture(0, 0, 4)
 
 KNOW_ANTS = list()
 
 
 def create_trackbar():
+    low_hue = 0
+    high_hue = 255
+    low_sat = 0
+    high_sat = 255
+    low_bri = 0
+    high_bri = 255
+    blur = 0
     """ Create Trackbar window """
     cv2.namedWindow('image')
 
@@ -101,24 +99,13 @@ def callback(x):
     pass
 
 
-def check_for_borders():
-    """ ask for borders """
-    print("Looking for borders")
-    while True:
-        frame = VIDEO.read()
-        borders = get_rect_borders(frame)
-        if len(borders) == 2:
-            return borders
-
-
 def test_mask(frame):
     """ Get mask for trackbar """
     low, high, blur, arc = trackbars()
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    rgb = hsv
     lower_hsv = np.array(low)
     higher_hsv = np.array(high)
-    mask = cv2.inRange(rgb, lower_hsv,
+    mask = cv2.inRange(hsv, lower_hsv,
                        higher_hsv)
     for i in range(blur):
         mask = cv2.GaussianBlur(mask, (5, 5), 1)
@@ -135,38 +122,41 @@ def test_mask(frame):
             approx = cv2.approxPolyDP(
                 cnt, (arc / 100) * cv2.arcLength(cnt, True), True)
             # cv2.drawContours(res, [approx], 0, (255), 5)
-            pos = get_approx_xy(approx, area, res)
+            pos = approx_xy(approx, area, res)
     return res, mask
 
 
-def get_approx_xy(approx, area, res):
-    cv2.polylines(res, approx, True, 255, 5)
-    x = approx.ravel()[0]
-    y = approx.ravel()[1]
-    cv2.putText(res, "Rectangle " + str(area),
-                (x, y), FONT, 1, 255)
-    return x, y
+def check_for_borders(video):
+    """ ask for borders """
+    print("Looking for borders")
+    while True:
+        frame = video.read()
+        borders = get_rect_borders(frame)
+        if len(borders) == 2:
+            return borders
 
 
 class EnvProcess:
     """ buffer-less VideoCapture """
+    video: VideoCapture
 
-    def __init__(self):
+    def __init__(self, name, auto, focus):
         self.queue = queue.Queue()
+        self.video = VideoCapture(name, auto, focus)
         t = threading.Thread(target=self._gen)
         t.daemon = True
         t.start()
 
     def _gen(self):
         """ Main """
-        frame = VIDEO.read()
-        # borders = checkForBorders()
+        frame = self.video.read()
+        borders = check_for_borders(self.video)
         borders = [(0, 0), (100, 100)]
         config_zone = [(0, 0), (borders[1][0] + 150, borders[1][1] + 250)]
         print("Starting Gen")
         # createTrackbar()
         while True:
-            frame = VIDEO.read()
+            frame = self.video.read()
             cropped = crop_frame(frame, borders)
             # res, mask = test_mask(frame)
             triangle = get_triangle(cropped)
