@@ -5,7 +5,7 @@ action_layout = [
     Button(
         button_text="",
         tooltip="Play the simulation",
-        bind_return_key="space",
+        # bind_return_key="p",
         button_color=[WHITE, WHITE],
         image_filename="assets/img/play.png",
         image_size=[35, 35],
@@ -19,7 +19,7 @@ action_layout = [
     Button(
         button_text="",
         tooltip="Play the simulation",
-        bind_return_key="space",
+        # bind_return_key="space",
         button_color=[WHITE, WHITE],
         image_filename="assets/img/save.png",
         image_size=[35, 35],
@@ -29,7 +29,7 @@ action_layout = [
 ]
 
 
-def action_events(event, value, window: Window):
+def action_events(event: str, value: object, window: Window):
     if event == "action_play_pause":
         if window["action_play_pause"].metadata["status"] == "pause":
             window["action_play_pause"].metadata["status"] = "play"
