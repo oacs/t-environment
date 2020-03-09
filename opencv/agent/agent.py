@@ -99,6 +99,8 @@ class Agent:
         self.address = address
         self.last_update = time.time()
         self.chars = self.connect()
+        self.color = self.con.readCharacteristic(self.chars.color).decode()
+        print(self.color)
         self.sending = Updatable()
         self.triangle = Triangle()
         self.set_config()

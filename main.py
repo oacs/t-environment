@@ -1,6 +1,7 @@
 import PySimpleGUI as sg
 import cv2
 import tool as get_config_file
+from agent import agent_gui, agent_gui_event
 from cli import cli, cli_events, cli_keys
 from menu.menu import menu_el
 from actions.action import action_layout, action_events, action_keys
@@ -17,8 +18,8 @@ actions = sg.Column(layout=[action_layout],
 layout = [
     [menu_el],
     [actions],
-    [graph, sg.Multiline()],
-    [cli], sg.Column([]),
+    [graph, agent_gui],
+    [cli],
 ]
 
 # Create the Window
@@ -37,12 +38,12 @@ while True:
 
     if event in action_keys:
         action_events(event, values, window)
-    if event in graph_keys:
-        graph_events(event, values, window, env_process.read)
     if event in cli_keys:
         cli_events(event, values, window)
     if event in (None, 'Cancel'):  # if user closes window or clicks cancel
         break
+    graph_events(event, values, window, env_process)
+    agent_gui_event(window, env_process)
     if event not in ("__TIMEOUT__", "graph"):
         print('You entered ', values, event)
     else:

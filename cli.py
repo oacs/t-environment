@@ -6,7 +6,7 @@ from actions.action import action_events
 from theme import DARK, WHITE, INFO, BLACK, DANGER
 
 cli = sg.Column([
-    [sg.Multiline("", disabled=True, key="cli-output", size=(20, 15), font=('Helvetica', 15, 'bold'),
+    [sg.Multiline("", disabled=True, key="cli-output", size=(20, 14), font=('Helvetica', 15, 'bold'),
                   background_color=BLACK, text_color=WHITE)],
     [sg.InputText("", disabled=False, key="cli-input", size=(80, 20)),
      sg.Button('enter-input', bind_return_key=True, visible=False)]
