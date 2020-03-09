@@ -6,6 +6,8 @@ graph = Graph((600, 450), (0, 450), (600, 0), key='GRAPH',
         "a_id": None
     })
 
+graph_keys = ["GRAPH"]
+
 
 def graph_events(event: str, values: dict, window: Window, read) -> None:
     """

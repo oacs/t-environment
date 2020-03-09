@@ -28,6 +28,8 @@ action_layout = [
     ),
 ]
 
+action_keys = ["action_play_pause", "action_save"]
+
 
 def action_events(event: str, value: object, window: Window):
     if event == "action_play_pause":
@@ -36,4 +38,4 @@ def action_events(event: str, value: object, window: Window):
         else:
             window["action_play_pause"].metadata["status"] = "pause"
         window["action_play_pause"].update(
-            image_filename="assets/img/" + window["action_play_pause"].metadata["status"]+".png")
+            image_filename="assets/img/" + window["action_play_pause"].metadata["status"] + ".png")

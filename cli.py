@@ -12,6 +12,8 @@ cli = sg.Column([
      sg.Button('enter-input', bind_return_key=True, visible=False)]
 ], size=(600, 450))
 
+cli_keys = ["cli-output", "cli-input", "enter-input"]
+
 
 def cli_events(event: str, values: object, window: sg.Window) -> None:
     """
