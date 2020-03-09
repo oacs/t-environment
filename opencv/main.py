@@ -49,10 +49,10 @@ def is_inside_rect(point, rect):
 
 # from kinnect import capture
 FONT = cv2.FONT_HERSHEY_COMPLEX
+
+
 # app = Flask(__name__)
 # VIDEO = VideoCapture(0, 0, 4)
-
-KNOW_ANTS = list()
 
 
 def create_trackbar():
@@ -139,36 +139,39 @@ def check_for_borders(video):
 class EnvProcess:
     """ buffer-less VideoCapture """
     video: VideoCapture
+    ants: list
+    borders: list
 
     def __init__(self, name, auto, focus):
         self.queue = queue.Queue()
         self.video = VideoCapture(name, auto, focus)
         t = threading.Thread(target=self._gen)
+        self.ants = list()
         t.daemon = True
         t.start()
 
     def _gen(self):
         """ Main """
         frame = self.video.read()
-        borders = check_for_borders(self.video)
+        self.borders = check_for_borders(self.video)
         # borders = [(0, 0), (100, 100)]
-        config_zone = [(0, 0), (borders[1][0] + 150, borders[1][1] + 250)]
+        config_zone = [(0, 0), (self.borders[1][0] + 150, self.borders[1][1] + 250)]
         print("Starting Gen")
         # create_trackbar()
         while True:
             frame = self.video.read()
-            cropped = crop_frame(frame, borders)
+            cropped = crop_frame(frame, self.borders)
             # res, mask = test_mask(frame)
             triangle = get_triangle(cropped)
 
             if triangle.is_valid():
                 # cv2.line(cropped, triangle.top, triangle.center, 255, 2)
                 if is_inside_rect(triangle.center, config_zone):
-                    if len(KNOW_ANTS) == 0:
-                        new_ant = Agent(find_ant(KNOW_ANTS))
-                        KNOW_ANTS.insert(0, new_ant)
+                    if len(self.ants) == 0:
+                        new_ant = Agent(find_ant(self.ants))
+                        self.ants.insert(0, new_ant)
 
-                for ant_obj in KNOW_ANTS:
+                for ant_obj in self.ants:
                     time_since_last_update = (time.time() - ant_obj.last_update) * 1000
                     dest = get_triangle(cropped, GREEN_CONF)
 
@@ -176,15 +179,15 @@ class EnvProcess:
                         ant_obj.destination = dest.center
                         ant_obj.send_dist(dest.center)
 
-                    ant_obj.draw_dest(frame, borders[1])
+                    ant_obj.draw_dest(frame, self.borders[1])
                     if time_since_last_update < 480:
                         continue
                     else:
                         ant_obj.update(cropped, triangle,
                                        time_since_last_update)
-            if len(borders) == 2:
+            if len(self.borders) == 2:
                 cv2.rectangle(
-                    frame, borders[0], borders[1], 200)
+                    frame, self.borders[0], self.borders[1], 200)
             # cv2.imshow('frame', res)
             # cv2.imshow('mask', mask)
             # cv2.imshow('crop', cropped)
