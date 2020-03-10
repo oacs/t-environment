@@ -28,7 +28,7 @@ window = sg.Window('UCAB-Bot Environment', layout, location=(0, 0), margins=(0, 
 
 graph_elem = window['GRAPH']  # type sg.Graph
 print("Init")
-env_process = EnvProcess(0, 0, 4)
+env_process = EnvProcess(0, 0, 4, max_ants=2)
 actions.expand(expand_x=True, expand_y=False, expand_row=False)
 cli.expand(expand_y=True)
 cli_output: sg.Multiline = window["cli-output"]
@@ -45,7 +45,7 @@ while True:
         break
     graph_events(event, values, window, env_process)
     agent_gui_event(event, values, window, env_process)
-    if event not in ("__TIMEOUT__", "graph"):
+    if event not in ("__TIMEOUT__", "graph", "agent-base-speed"):
         print('You entered ', values, event)
     else:
         continue

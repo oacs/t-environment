@@ -107,6 +107,7 @@ class Agent:
         # self.radius is an instance variable
         self.configured = False
         self.address = address
+        self.connected = False
         self.last_update = time.time()
         self.chars = self.connect()
         if self.connected:

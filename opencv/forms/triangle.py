@@ -1,7 +1,7 @@
 """ Triangle module """
 import math  # 'math' needed for 'sqrt'
 import cv2
-from opencv.forms.color import PURPLE_CONF, Colors
+from opencv.forms.color import PURPLE_CONF, Colors, GREEN_CONF
 
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -125,7 +125,7 @@ class Triangle:
         return value * is_clockwise(m, orientation, self.top, pnt) * -1
 
 
-def get_triangle(frame, config=PURPLE_CONF, prev_pos=False):
+def get_triangle(frame, config=Colors.purple.value, prev_pos=False):
     """ Returns an array of borders(tuples with x and y) """
     # AREA = 100
     # # Turn no HSV
@@ -138,7 +138,10 @@ def get_triangle(frame, config=PURPLE_CONF, prev_pos=False):
     #     print(min_crop_y, max_crop_y, min_crop_x, max_crop_x)
     #     frame = frame[min_crop_y:max_crop_y, min_crop_x: max_crop_x]
     # hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
+    if config == Colors.purple.value:
+        config = PURPLE_CONF
+    elif config == Colors.green.value:
+        config = GREEN_CONF
     mask = config.get_mask(frame)
     # Blur image
     # mask = cv2.GaussianBlur(mask, (5, 5), 1)

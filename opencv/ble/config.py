@@ -27,7 +27,6 @@ def find_ant(know_ants: list, color: ColorFilter):
             ant_obj = Agent(ant)
             if ant_obj.connected and ant_obj.color == color.color.value:
                 return ant_obj
-
     return None
 
 

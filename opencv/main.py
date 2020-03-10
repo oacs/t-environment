@@ -9,7 +9,7 @@ import numpy as np
 from opencv.ble.config import find_ant
 from opencv.forms.borders import get_rect_borders, crop_frame
 from opencv.forms.triangle import get_triangle, distance, Triangle
-from opencv.forms.color import GREEN_CONF, Colors, PURPLE_CONF
+from opencv.forms.color import GREEN_CONF, Colors, PURPLE_CONF, ColorFilter
 from opencv.agent.agent import Agent
 from opencv.forms.utils import approx_xy
 
@@ -158,6 +158,7 @@ class EnvProcess:
         self.unknown_triangles = list()
         self.possible_colors = possible_colors
         self.max_ants = max_ants
+        self.borders = list()
         t.daemon = True
         t.start()
 
@@ -167,57 +168,15 @@ class EnvProcess:
         frame = self.video.read()
         self.queue.put(frame)
         self.borders = check_for_borders(self.video)
-        config_zone = [(0, 0), (self.borders[1][0] + 150, self.borders[1][1] + 250)]
+        self.config_zone = [(0, 0), (self.borders[1][0] + 150, self.borders[1][1] + 250)]
 
         while True:
             frame = self.video.read()
             cropped = crop_frame(frame, self.borders)
 
             if len(self.ants) != self.max_ants:
-                self.look_for_new_ants()
+                self.look_for_new_ants(cropped)
 
-            for color in self.possible_colors:
-                triangle = get_triangle(cropped, color)
-                if triangle.is_valid():
-                    index = -1
-                    for i, ant_obj in enumerate(self.ants):
-                        if ant_obj.color == color.color.value:
-                            index = i
-                            break
-                    if index != -1:
-                        ant_obj = self.ants[i]
-                        time_since_last_update = (time.time() - ant_obj.last_update) * 1000
-                        # dest = get_triangle(cropped, GREEN_CONF)
-                        if ant_obj.color == Colors.purple.value and len(self.ants) == 2:
-                            ant_dest = self.ants[(index+1) % 2]
-
-                            dest = ant_dest.triangle
-                            if dest.is_valid():
-                                ant_obj.destination = dest.center
-                                ant_obj.send_dist(dest.center)
-
-                        ant_obj.draw_dest(frame, self.borders[1])
-                        ant_obj.draw_claw(frame, self.borders[1])
-                        if time_since_last_update < 480:
-                            continue
-                        else:
-                            ant_obj.update(cropped, triangle,
-                                           time_since_last_update)
-                    else:
-                        if is_inside_rect(triangle.center, config_zone):
-                            print("Looking for ant")
-                            new_ant = find_ant(self.ants, color)
-                            if new_ant is not None:
-                                print("new agent added ", new_ant.color)
-                                self.ants.insert(0, new_ant)
-
-            if len(self.borders) == 2:
-                cv2.rectangle(
-                    frame, self.borders[0], self.borders[1], 200)
-            # cv2.imshow('frame', res)
-            # cv2.imshow('mask', mask)
-            # cv2.imshow('crop', cropped)
-            # yield cropped, mask, res, frame
             if not self.queue.empty():
                 try:
                     self.queue.get_nowait()  # discard previous (unprocessed) frame
@@ -230,7 +189,34 @@ class EnvProcess:
         """ Return a frame """
         return self.queue.get()
 
-    def look_for_new_ants(self):
-        new_ant: Agent = None
+    def look_for_new_ants(self, frame):
+        color: ColorFilter
+        for color in self.possible_colors:
+            triangle = get_triangle(frame, color.color.value)
+            if triangle.is_valid():
+                if is_inside_rect(triangle.center, self.config_zone):
+                    self.possible_colors.remove(color)
+                    new_ant: Agent
+                    new_ant = find_ant(self.ants, color)
+                    if new_ant is not None and new_ant.connected:
+                        print("new agent added ", new_ant.color)
+                        self.ants.insert(0, new_ant)
+                        self.update_agent(new_ant)
+                    else:
+                        self.possible_colors.append(color)
 
-        return new_ant
+    def update_agent(self, agent):
+        time_since_last_update = (time.time() - agent.last_update) * 1000
+        frame = self.video.read()
+        cropped = crop_frame(frame, self.borders)
+        triangle = get_triangle(cropped, agent.color)
+        if triangle.is_valid():
+            agent.update(cropped, triangle,
+                         time_since_last_update)
+        threading.Timer(0.2, function=self.update_agent, args=[agent]).start()
+
+    def draw_borders(self, frame):
+        if len(self.borders) == 2:
+            cv2.rectangle(
+                frame, self.borders[0], self.borders[1], 200)
+        return  frame
