@@ -1,4 +1,5 @@
 """ This module is defined for the agent object """
+import math
 from enum import Enum
 from uuid import UUID
 import time
@@ -6,10 +7,11 @@ from struct import unpack, pack
 import logging
 import sys
 import cv2
-from bluepy.btle import Peripheral
+from bluepy.btle import Peripheral, BTLEException
 from opencv.forms.color import Colors
 from opencv.forms.triangle import Triangle, distance
-from opencv.forms.utils import FONT
+from opencv.forms.utils import FONT, rotate_polygon
+import numpy as np
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 LOGGER = logging.getLogger("agent")
@@ -64,6 +66,12 @@ class Characteristics():
                 continue
 
 
+def Rotate2D(pts, cnt, ang=math.pi / 4):
+    """ pts = {} Rotates points(nx2) about center cnt(2) by angle ang(1) in radian """
+
+    return np.dot(pts - cnt, np.array([(math.cos(ang), math.sin(ang)), (-math.sin(ang), math.cos(ang))]) + cnt)
+
+
 class Service:
     """ Service that an agent offers """
 
@@ -81,16 +89,18 @@ class Agent:
     """ Agent with sensor values and methods to communicate """
     color: Colors
     chars: Characteristics
-    destination = (-1, -1)
-    last_update: float
-    con: Peripheral
-    xy = (-1, -1)
-    speed = 0
-    sending: Updatable
-    address: str
     triangle: Triangle
-    distance: float
+    sending: Updatable
+    con: Peripheral
+    address: str
+    xy = (-1, -1)
+    last_update: float
+    # Destination info
+    destination = (-1, -1)
     rotation: float
+    distance: float
+    connected: bool
+    speed = 0
     __configured: bool
 
     def __init__(self, address, ):
@@ -99,29 +109,35 @@ class Agent:
         self.address = address
         self.last_update = time.time()
         self.chars = self.connect()
-        self.color = self.con.readCharacteristic(self.chars.color).decode()
-        print(self.color)
+        if self.connected:
+            self.color = self.con.readCharacteristic(self.chars.color).decode()
+            self.set_config()
         self.sending = Updatable()
         self.triangle = Triangle()
-        self.set_config()
 
     def connect(self):
         """ Connect to to ant and se the config """
 
         LOGGER.debug("Connecting")
-        self.con = Peripheral(deviceAddr=self.address)
-
+        try:
+            self.con = Peripheral(deviceAddr=self.address)
+        except BTLEException:
+            self.connected = False
+            print("Failed to connect")
+            return None
         LOGGER.debug("Connected")
         services = self.con.getServices()
 
         LOGGER.debug("Fetched services")
-        for serv in services:
-            if serv.uuid == SENSOR_SERVICE:
+        for service in services:
+            if service.uuid == SENSOR_SERVICE:
                 LOGGER.debug("Found sensor service")
-                chars = serv.getCharacteristics()
+                chars = service.getCharacteristics()
                 LOGGER.debug("Found chars:")
                 LOGGER.debug(chars)
         chars = Characteristics(chars)
+
+        self.connected = True
         return chars
 
     def read_color(self):
@@ -160,6 +176,16 @@ class Agent:
             "ii", dest[0], dest[1])
         self.con.writeCharacteristic(
             self.chars.dest, b_dest, withResponse=True)
+
+    def send_speed_base(self, speed):
+        """ Convert the dist(tuple) to byte array and send via BLE """
+        b_dest = pack(
+            "i", speed)
+        print("s".encode() + b_dest, speed)
+        self.con.writeCharacteristic(
+            self.chars.config, "s".encode() + b_dest, withResponse=True)
+
+        print(b''.join(["s".encode(), b_dest]))
 
     def update(self, frame, triangle, time_since_last_update):
         """ Update the sensors of the agent via BLE"""
@@ -224,3 +250,24 @@ class Agent:
             cv2.putText(frame,
                         ('%.2f' % self.rotation) + " C*", self.destination, FONT, 1,
                         255)
+
+    def draw_claw(self, frame, offset=(0, 0)):
+        # cv2.circle(frame, tuple(map(sum, zip(self.xy, offset))), 25, (128, 0, 128), 2);
+        x, y = tuple(map(sum, zip(self.xy, offset)))
+        forms = [np.array([
+            (x - 12, y - 35), (13 + x, y - 35),
+            (13 + x, y - 40), (x - 12, y - 40),
+        ]),
+            np.array([
+                (x - 12, y - 45), (x - 6, y - 45),
+                (x - 6, y - 65), (x - 12, y - 65),
+            ]),
+            np.array([
+                (x + 6, y - 45), (x + 12, y - 45),
+                (x + 12, y - 65), (x + 6, y - 65),
+            ])
+        ]
+        for points in forms:
+            b = rotate_polygon(points, 45, x, y)
+            cv2.polylines(frame, [b], True, (128, 0, 128))
+            cv2.fillPoly(frame, [b], (128, 0, 128))

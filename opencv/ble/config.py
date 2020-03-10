@@ -1,5 +1,9 @@
 from bluepy.btle import Scanner, Peripheral
 from uuid import UUID
+
+from opencv.agent.agent import Agent
+from opencv.forms.color import Colors, ColorFilter
+
 SENSOR_SERVICE = UUID("218EE492-8AFB-4CA6-93B6-2D0DBF2F00FE")
 POSSIBLE_ANTS = ["d9:da:40:61:51:42", "cf:95:c4:15:a6:05", "c2:4d:ee:21:f3:6a"]
 GROUP_CHAR = "5ad56076-88c1-4e11-bd31-7d4f1e99f32c"
@@ -11,14 +15,20 @@ DEBUG_CHAR = "645e1252-55dd-4604-8d35-add29319725b"
 COM_CHAR = "a6f2eee3-d71e-4e77-a9fa-66fb946c4e96"
 
 
-def find_ant(know_ants):
+def return_address(ant: Agent):
+    return ant.address
+
+
+def find_ant(know_ants: list, color: ColorFilter):
     """ Find ants by color and connect to it"""
+    ant_address = map(return_address, know_ants)
     for ant in POSSIBLE_ANTS:
-        try:
-            know_ants.index(ant)
-            print(ant)
-        except ValueError:
-            return ant
+        if ant not in ant_address:
+            ant_obj = Agent(ant)
+            if ant_obj.connected and ant_obj.color == color.color.value:
+                return ant_obj
+
+    return None
 
 
 def connect(ant_address, color):
@@ -53,7 +63,6 @@ def connect(ant_address, color):
                 if char.uuid == ROTATION_CHAR:
                     rotation_char = char.getHandle()
     if color == read_color:
-
         print("setting cng")
         ant.writeCharacteristic(
             config_char, str.encode("cng"), withResponse=True)
@@ -66,6 +75,5 @@ def connect(ant_address, color):
         }
 
         return True, color, ant, chars
-
 
 # connect("cf:95:c4:15:a6:05", "R")

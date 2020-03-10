@@ -27,7 +27,8 @@ window = sg.Window('UCAB-Bot Environment', layout, location=(0, 0), margins=(0, 
                    size=(1500, 900), resizable=True, background_color=DARK).Finalize()
 
 graph_elem = window['GRAPH']  # type sg.Graph
-env_process = EnvProcess(2, 0, 4)
+print("Init")
+env_process = EnvProcess(0, 0, 4)
 actions.expand(expand_x=True, expand_y=False, expand_row=False)
 cli.expand(expand_y=True)
 cli_output: sg.Multiline = window["cli-output"]
@@ -43,7 +44,7 @@ while True:
     if event in (None, 'Cancel'):  # if user closes window or clicks cancel
         break
     graph_events(event, values, window, env_process)
-    agent_gui_event(window, env_process)
+    agent_gui_event(event, values, window, env_process)
     if event not in ("__TIMEOUT__", "graph"):
         print('You entered ', values, event)
     else:

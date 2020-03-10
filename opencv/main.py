@@ -2,12 +2,14 @@ import time
 import struct
 import queue
 import threading
+from typing import List, Any
+
 import cv2
 import numpy as np
 from opencv.ble.config import find_ant
 from opencv.forms.borders import get_rect_borders, crop_frame
-from opencv.forms.triangle import get_triangle, distance
-from opencv.forms.color import GREEN_CONF
+from opencv.forms.triangle import get_triangle, distance, Triangle
+from opencv.forms.color import GREEN_CONF, Colors, PURPLE_CONF
 from opencv.agent.agent import Agent
 from opencv.forms.utils import approx_xy
 
@@ -136,55 +138,79 @@ def check_for_borders(video):
             return borders
 
 
+DEFAULT_COLORS = [GREEN_CONF, PURPLE_CONF]
+
+
 class EnvProcess:
     """ buffer-less VideoCapture """
+    unknown_triangles: List[Triangle]
     video: VideoCapture
-    ants: list
-    borders: list
+    ants: List[Agent]
+    possible_colors: List[Colors]
+    borders: List[tuple]
+    max_ants: int
 
-    def __init__(self, name, auto, focus):
+    def __init__(self, name, auto, focus, possible_colors=DEFAULT_COLORS, max_ants=2):
         self.queue = queue.Queue()
         self.video = VideoCapture(name, auto, focus)
         t = threading.Thread(target=self._gen)
         self.ants = list()
+        self.unknown_triangles = list()
+        self.possible_colors = possible_colors
+        self.max_ants = max_ants
         t.daemon = True
         t.start()
 
     def _gen(self):
         """ Main """
-        frame = self.video.read()
-        self.borders = check_for_borders(self.video)
-        # borders = [(0, 0), (100, 100)]
-        config_zone = [(0, 0), (self.borders[1][0] + 150, self.borders[1][1] + 250)]
         print("Starting Gen")
-        # create_trackbar()
+        frame = self.video.read()
+        self.queue.put(frame)
+        self.borders = check_for_borders(self.video)
+        config_zone = [(0, 0), (self.borders[1][0] + 150, self.borders[1][1] + 250)]
+
         while True:
             frame = self.video.read()
             cropped = crop_frame(frame, self.borders)
-            # res, mask = test_mask(frame)
-            triangle = get_triangle(cropped)
 
-            if triangle.is_valid():
-                # cv2.line(cropped, triangle.top, triangle.center, 255, 2)
-                if is_inside_rect(triangle.center, config_zone):
-                    if len(self.ants) == 0:
-                        new_ant = Agent(find_ant(self.ants))
-                        self.ants.insert(0, new_ant)
+            if len(self.ants) != self.max_ants:
+                self.look_for_new_ants()
 
-                for ant_obj in self.ants:
-                    time_since_last_update = (time.time() - ant_obj.last_update) * 1000
-                    dest = get_triangle(cropped, GREEN_CONF)
+            for color in self.possible_colors:
+                triangle = get_triangle(cropped, color)
+                if triangle.is_valid():
+                    index = -1
+                    for i, ant_obj in enumerate(self.ants):
+                        if ant_obj.color == color.color.value:
+                            index = i
+                            break
+                    if index != -1:
+                        ant_obj = self.ants[i]
+                        time_since_last_update = (time.time() - ant_obj.last_update) * 1000
+                        # dest = get_triangle(cropped, GREEN_CONF)
+                        if ant_obj.color == Colors.purple.value and len(self.ants) == 2:
+                            ant_dest = self.ants[(index+1) % 2]
 
-                    if dest.is_valid():
-                        ant_obj.destination = dest.center
-                        ant_obj.send_dist(dest.center)
+                            dest = ant_dest.triangle
+                            if dest.is_valid():
+                                ant_obj.destination = dest.center
+                                ant_obj.send_dist(dest.center)
 
-                    ant_obj.draw_dest(frame, self.borders[1])
-                    if time_since_last_update < 480:
-                        continue
+                        ant_obj.draw_dest(frame, self.borders[1])
+                        ant_obj.draw_claw(frame, self.borders[1])
+                        if time_since_last_update < 480:
+                            continue
+                        else:
+                            ant_obj.update(cropped, triangle,
+                                           time_since_last_update)
                     else:
-                        ant_obj.update(cropped, triangle,
-                                       time_since_last_update)
+                        if is_inside_rect(triangle.center, config_zone):
+                            print("Looking for ant")
+                            new_ant = find_ant(self.ants, color)
+                            if new_ant is not None:
+                                print("new agent added ", new_ant.color)
+                                self.ants.insert(0, new_ant)
+
             if len(self.borders) == 2:
                 cv2.rectangle(
                     frame, self.borders[0], self.borders[1], 200)
@@ -203,3 +229,8 @@ class EnvProcess:
     def read(self):
         """ Return a frame """
         return self.queue.get()
+
+    def look_for_new_ants(self):
+        new_ant: Agent = None
+
+        return new_ant
