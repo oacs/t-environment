@@ -24,7 +24,9 @@ layout = [
 
 # Create the Window
 window = sg.Window('UCAB-Bot Environment', layout, location=(0, 0), margins=(0, 0),
-                   size=(1500, 900), resizable=True, background_color=DARK).Finalize()
+                   size=(1500, 900), resizable=True, background_color=DARK, metadata={
+        "last_update": 0
+    }).Finalize()
 
 graph_elem = window['GRAPH']  # type sg.Graph
 print("Init")
@@ -49,6 +51,5 @@ while True:
         print('You entered ', values, event)
     else:
         continue
-
 
 window.close()

@@ -4,6 +4,7 @@ import queue
 import threading
 from typing import List, Any
 
+import bluepy
 import cv2
 import numpy as np
 from opencv.ble.config import find_ant
@@ -201,19 +202,31 @@ class EnvProcess:
                     if new_ant is not None and new_ant.connected:
                         print("new agent added ", new_ant.color)
                         self.ants.insert(0, new_ant)
-                        self.update_agent(new_ant)
+                        self.update_agent(new_ant, new_ant.color == "P")
                     else:
                         self.possible_colors.append(color)
 
-    def update_agent(self, agent):
-        time_since_last_update = (time.time() - agent.last_update) * 1000
-        frame = self.video.read()
-        cropped = crop_frame(frame, self.borders)
-        triangle = get_triangle(cropped, agent.color)
-        if triangle.is_valid():
-            agent.update(cropped, triangle,
-                         time_since_last_update)
-        threading.Timer(0.2, function=self.update_agent, args=[agent]).start()
+    def update_agent(self, agent, following):
+        try:
+            time_since_last_update = (time.time() - agent.last_update) * 1000
+            frame = self.video.read()
+            cropped = crop_frame(frame, self.borders)
+            triangle = get_triangle(cropped, agent.color)
+            if triangle.is_valid():
+                if following:
+                    dest = get_triangle(cropped, "G")
+                    if dest.is_valid():
+                        agent.destination = dest.center
+                        agent.send_dist(dest.center)
+                agent.update(cropped, triangle,
+                             time_since_last_update)
+        except bluepy.btle.BTLEDisconnectError:
+            agent.connect()
+        except bluepy.btle.BTLEGattError:
+            agent.connect()
+        threading.Timer(0.2, function=self.update_agent, args=[agent,following]).start()
+
+
 
     def draw_borders(self, frame):
         if len(self.borders) == 2:

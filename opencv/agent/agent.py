@@ -101,6 +101,7 @@ class Agent:
     distance: float
     connected: bool
     speed = 0
+    speed_rotation = 0
     __configured: bool
 
     def __init__(self, address, ):
@@ -166,10 +167,10 @@ class Agent:
         if self.sending.rotation:
             self.rotation = self.triangle.calc_rotation(
                 self.destination)
-            b_rotation = pack("f", self.rotation)
-            # print(rotation)
+            b_rotation = pack("ff", self.rotation, 0)
             self.con.writeCharacteristic(
                 self.chars.rotation, b_rotation, withResponse=True)
+
 
     def send_dist(self, dest):
         """ Convert the dist(tuple) to byte array and send via BLE """
@@ -178,23 +179,26 @@ class Agent:
         self.con.writeCharacteristic(
             self.chars.dest, b_dest, withResponse=True)
 
-    def send_speed_base(self, speed):
+    def send_speed_base(self, speed, type):
         """ Convert the dist(tuple) to byte array and send via BLE """
         b_dest = pack(
             "i", speed)
-        print("s".encode() + b_dest, speed)
+        print(type)
+        print(("s"+type).encode() + b_dest, speed)
         self.con.writeCharacteristic(
-            self.chars.config, "s".encode() + b_dest, withResponse=True)
-
-        print(b''.join(["s".encode(), b_dest]))
+            self.chars.config, ("s"+type).encode() + b_dest, withResponse=True)
 
     def update(self, frame, triangle, time_since_last_update):
         """ Update the sensors of the agent via BLE"""
+        if triangle.is_valid() and self.triangle.is_valid():
+            self.speed_rotation = distance(
+                self.triangle.top, triangle.top) / time_since_last_update
         self.triangle = triangle
 
         # Calc speed
         self.speed = distance(
             self.triangle.center, self.xy) / time_since_last_update
+
 
         # update Time
         self.last_update = time.time()
