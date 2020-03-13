@@ -123,9 +123,10 @@ class Agent:
         LOGGER.debug("Connecting")
         try:
             self.con = Peripheral(deviceAddr=self.address)
+            self.con.addr = self.address
         except BTLEException:
             self.connected = False
-            print("Failed to connect")
+            print("Failed to connect", BTLEException)
             return None
         LOGGER.debug("Connected")
         services = self.con.getServices()
@@ -136,7 +137,7 @@ class Agent:
                 LOGGER.debug("Found sensor service")
                 chars = service.getCharacteristics()
                 LOGGER.debug("Found chars:")
-                LOGGER.debug(chars)
+                # LOGGER.debug(chars)
         chars = Characteristics(chars)
 
         self.connected = True

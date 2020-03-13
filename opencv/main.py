@@ -7,6 +7,9 @@ from typing import List, Any
 import bluepy
 import cv2
 import numpy as np
+from PySimpleGUI import Window, Multiline
+
+from cli import send_info_message, output_message
 from opencv.ble.config import find_ant
 from opencv.forms.borders import get_rect_borders, crop_frame
 from opencv.forms.triangle import get_triangle, distance, Triangle
@@ -131,12 +134,9 @@ def test_mask(frame):
 
 def check_for_borders(video):
     """ ask for borders """
-    print("Looking for borders")
-    while True:
-        frame = video.read()
-        borders = get_rect_borders(frame)
-        if len(borders) == 2:
-            return borders
+    frame = video.read()
+    borders = get_rect_borders(frame)
+    return borders
 
 
 DEFAULT_COLORS = [GREEN_CONF, PURPLE_CONF]
@@ -147,66 +147,82 @@ class EnvProcess:
     unknown_triangles: List[Triangle]
     video: VideoCapture
     ants: List[Agent]
-    possible_colors: List[Colors]
+    possible_colors: List[ColorFilter]
     borders: List[tuple]
     max_ants: int
+    output: Multiline
+    started: bool
+    queue: queue.Queue
+    looking: bool
+
 
     def __init__(self, name, auto, focus, possible_colors=DEFAULT_COLORS, max_ants=2):
         self.queue = queue.Queue()
         self.video = VideoCapture(name, auto, focus)
-        t = threading.Thread(target=self._gen)
         self.ants = list()
         self.unknown_triangles = list()
         self.possible_colors = possible_colors
         self.max_ants = max_ants
         self.borders = list()
+        self.looking = False
+        self.started = False
+
+    def start_thread(self, main_queue: queue.Queue):
+        t = threading.Thread(target=self._gen, args=[main_queue])
+        main_queue.put(output_message("Process started", "info"))
         t.daemon = True
+        self.started = True
         t.start()
 
-    def _gen(self):
+    def _gen(self, main_queue):
         """ Main """
-        print("Starting Gen")
+
         frame = self.video.read()
-        self.queue.put(frame)
-        self.borders = check_for_borders(self.video)
+        self.put_on_queue(frame)
+        main_queue.put(output_message("Searching for borders", "info"))
+        while len(self.borders) != 2:
+            self.borders = check_for_borders(self.video)
+
+        main_queue.put(output_message("Setting config zone (" + str(self.borders[1][0] + 150) + ", " + str(self.borders[1][1] + 250) + ")", "info"))
         self.config_zone = [(0, 0), (self.borders[1][0] + 150, self.borders[1][1] + 250)]
+        main_queue.put(output_message("Looking for ants", "info"))
 
         while True:
             frame = self.video.read()
             cropped = crop_frame(frame, self.borders)
 
-            if len(self.ants) != self.max_ants:
-                self.look_for_new_ants(cropped)
 
-            if not self.queue.empty():
-                try:
-                    self.queue.get_nowait()  # discard previous (unprocessed) frame
-                except queue.Empty:
-                    pass
-            # print("gen")
-            self.queue.put(frame)
+            if len(self.ants) != self.max_ants and not self.looking:
+                threading.Thread(target=self.look_for_new_ants, args=[cropped, main_queue]).start()
+
+            self.put_on_queue(frame)
 
     def read(self):
         """ Return a frame """
         return self.queue.get()
 
-    def look_for_new_ants(self, frame):
+
+    def look_for_new_ants(self, frame, main_queue):
+        self.looking = True
+        # print("Looking")
         color: ColorFilter
         for color in self.possible_colors:
             triangle = get_triangle(frame, color.color.value)
             if triangle.is_valid():
                 if is_inside_rect(triangle.center, self.config_zone):
+                    print(triangle.position)
                     self.possible_colors.remove(color)
                     new_ant: Agent
                     new_ant = find_ant(self.ants, color)
                     if new_ant is not None and new_ant.connected:
-                        print("new agent added ", new_ant.color)
+                        main_queue.put(output_message("New agent added " + new_ant.color, "info"))
                         self.ants.insert(0, new_ant)
-                        self.update_agent(new_ant, new_ant.color == "P")
+                        self.update_agent(new_ant, new_ant.color == "P", main_queue)
                     else:
                         self.possible_colors.append(color)
+        self.looking = False
 
-    def update_agent(self, agent, following):
+    def update_agent(self, agent, following, main_queue):
         try:
             time_since_last_update = (time.time() - agent.last_update) * 1000
             frame = self.video.read()
@@ -221,15 +237,31 @@ class EnvProcess:
                 agent.update(cropped, triangle,
                              time_since_last_update)
         except bluepy.btle.BTLEDisconnectError:
-            agent.connect()
+            main_queue.put(output_message(f"Agent {agent.color} got disconnected. Trying to reconnect", "error"))
+            agent.con.disconnect()
+            # time.sleep(60)
+            # agent.connect()
+            # main_queue.put(output_message(f"Agent {agent.color} got reconnected.", "info"))
+
         except bluepy.btle.BTLEGattError:
-            agent.connect()
-        threading.Timer(0.2, function=self.update_agent, args=[agent,following]).start()
-
-
+            main_queue.put(output_message(f"Agent {agent.color} gatt error", "error"))
+        except bluepy.btle.BTLEInternalError:
+            main_queue.put(output_message(f"Agent {agent.color} BTLEInternalError", "error"))
+        threading.Timer(0.2, function=self.update_agent, args=[agent, following, main_queue]).start()
 
     def draw_borders(self, frame):
         if len(self.borders) == 2:
             cv2.rectangle(
                 frame, self.borders[0], self.borders[1], 200)
-        return  frame
+        return frame
+
+    def put_on_queue(self, frame):
+        if not self.queue.empty():
+            try:
+                self.queue.get_nowait()  # discard previous (unprocessed) frame
+            except queue.Empty:
+                pass
+        # print("gen")
+        self.queue.put(frame)
+
+

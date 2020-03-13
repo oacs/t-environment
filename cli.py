@@ -12,7 +12,7 @@ cli = sg.Column([
      sg.Button('enter-input', bind_return_key=True, visible=False)]
 ], size=(600, 450))
 
-cli_keys = ["cli-output", "cli-input", "enter-input"]
+cli_keys = ["cli-output", "cli-input", "enter-input", "env-message"]
 
 
 def cli_events(event: str, values: object, window: sg.Window) -> None:
@@ -31,7 +31,11 @@ def cli_events(event: str, values: object, window: sg.Window) -> None:
         send_user_message(values["cli-input"], cli_output)
         cli_input.update("")
         process_command(values["cli-input"], window)
-
+    if event == "env-message":
+        if values["type"] == "info":
+            send_info_message(values["message"], cli_output)
+        elif values["type"] == "error":
+            send_error_message(values["message"], cli_output)
     return
 
 
@@ -67,6 +71,16 @@ def send_error_message(error: str, output: sg.Multiline):
 
 
 def send_info_message(info: str, output: sg.Multiline):
-    output.update("\nEnv: ", text_color_for_value=WHITE, append=True, autoscroll=True)
+    output.update("\nEnv: ", text_color_for_value=INFO, append=True, autoscroll=True)
     output.update(info, text_color_for_value=INFO, append=True, autoscroll=True)
     return
+
+
+def output_message(text: str, type_message: str):
+    return {
+        "event": "env-message",
+        "values": {
+            "message": text,
+            "type": type_message
+        }
+    }
