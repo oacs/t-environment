@@ -155,7 +155,6 @@ class EnvProcess:
     queue: queue.Queue
     looking: bool
 
-
     def __init__(self, name, auto, focus, possible_colors=DEFAULT_COLORS, max_ants=2):
         self.queue = queue.Queue()
         self.video = VideoCapture(name, auto, focus)
@@ -183,14 +182,15 @@ class EnvProcess:
         while len(self.borders) != 2:
             self.borders = check_for_borders(self.video)
 
-        main_queue.put(output_message("Setting config zone (" + str(self.borders[1][0] + 150) + ", " + str(self.borders[1][1] + 250) + ")", "info"))
+        main_queue.put(output_message(
+            "Setting config zone (" + str(self.borders[1][0] + 150) + ", " + str(self.borders[1][1] + 250) + ")",
+            "info"))
         self.config_zone = [(0, 0), (self.borders[1][0] + 150, self.borders[1][1] + 250)]
         main_queue.put(output_message("Looking for ants", "info"))
 
         while True:
             frame = self.video.read()
             cropped = crop_frame(frame, self.borders)
-
 
             if len(self.ants) != self.max_ants and not self.looking:
                 threading.Thread(target=self.look_for_new_ants, args=[cropped, main_queue]).start()
@@ -200,7 +200,6 @@ class EnvProcess:
     def read(self):
         """ Return a frame """
         return self.queue.get()
-
 
     def look_for_new_ants(self, frame, main_queue):
         self.looking = True
@@ -264,4 +263,8 @@ class EnvProcess:
         # print("gen")
         self.queue.put(frame)
 
-
+    def draw_xy(self, frame, x, y):
+        if len(self.borders) == 2:
+            frame = cv2.putText(frame, f"( {x}, {y} )", (self.borders[0][0] - 50, 50), cv2.FONT_HERSHEY_COMPLEX, 0.5,
+                                (140, 25, 78))
+        return frame
