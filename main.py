@@ -38,7 +38,7 @@ env_process.start_thread(main_queue)
 actions.expand(expand_x=True, expand_y=False, expand_row=False)
 cli.expand(expand_y=True)
 cli_output: sg.Multiline = window["cli-output"]
-cli_output.ex`pand(expand_x=True, expand_row=True, expand_y=True)
+cli_output.expand(expand_x=True, expand_row=True, expand_y=True)
 
 
 def process_events(event: str, values: list, window: sg.Window) -> None:
