@@ -194,7 +194,6 @@ class EnvProcess:
 
             if len(self.ants) != self.max_ants and not self.looking:
                 threading.Thread(target=self.look_for_new_ants, args=[cropped, main_queue]).start()
-
             self.put_on_queue(frame)
 
     def read(self):

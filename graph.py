@@ -49,6 +49,8 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
         frame = env_process.draw_xy(frame, window["GRAPH"].metadata["x"], window["GRAPH"].metadata["y"])
         frame = env_process.draw_borders(frame)
         for ant in env_process.ants:
+            frame = ant.draw_claw(frame, env_process.borders[1])
+        for ant in env_process.ants:
             ant.draw_dest(frame, env_process.borders[1])
         img_bytes = cv2.imencode('.png', frame)[1].tobytes()  # ditto
         if window["GRAPH"].metadata["a_id"]:

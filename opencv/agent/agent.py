@@ -257,23 +257,24 @@ class Agent:
                         ('%.2f' % self.rotation) + " C*", self.destination, FONT, 1,
                         255)
 
-    def draw_claw(self, frame, offset=(0, 0)):
+    def draw_claw(self, frame: object, offset: object = (0, 0)) -> object:
         # cv2.circle(frame, tuple(map(sum, zip(self.xy, offset))), 25, (128, 0, 128), 2);
         x, y = tuple(map(sum, zip(self.xy, offset)))
         forms = [np.array([
-            (x - 12, y - 35), (13 + x, y - 35),
-            (13 + x, y - 40), (x - 12, y - 40),
+            (x - 12, y - 10), (13 + x, y - 10),
+            ( x, y - 5),
         ]),
             np.array([
-                (x - 12, y - 45), (x - 6, y - 45),
-                (x - 6, y - 65), (x - 12, y - 65),
+                (x - 12, y - 15), (x - 6, y - 15),
+                (x-6, y - 40),
             ]),
             np.array([
-                (x + 6, y - 45), (x + 12, y - 45),
-                (x + 12, y - 65), (x + 6, y - 65),
+                (x + 6, y - 15), (x + 12, y - 15),
+                (x+6, y - 40),
             ])
         ]
         for points in forms:
-            b = rotate_polygon(points, 45, x, y)
+            b = rotate_polygon(points, 0, x, y)
             cv2.polylines(frame, [b], True, (128, 0, 128))
             cv2.fillPoly(frame, [b], (128, 0, 128))
+        return  frame
