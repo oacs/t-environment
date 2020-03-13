@@ -31,13 +31,14 @@ window = sg.Window('UCAB-Bot Environment', layout, location=(0, 0), margins=(0, 
     }).Finalize()
 
 graph_elem = window['GRAPH']  # type sg.Graph
+graph_elem.bind('<Motion>', "-MOUSE-MOTION")
 main_queue = queue.Queue()
 env_process = EnvProcess(0, 0, 4, max_ants=1)
 env_process.start_thread(main_queue)
 actions.expand(expand_x=True, expand_y=False, expand_row=False)
 cli.expand(expand_y=True)
 cli_output: sg.Multiline = window["cli-output"]
-cli_output.expand(expand_x=True, expand_row=True, expand_y=True)
+cli_output.ex`pand(expand_x=True, expand_row=True, expand_y=True)
 
 
 def process_events(event: str, values: list, window: sg.Window) -> None:
@@ -71,7 +72,8 @@ while True:
         # window.refresh()
         # print(message)
     # print(event)
-    if event not in ("__TIMEOUT__", "graph", "agent-base-speed"):
+    if event not in ("__TIMEOUT__", "graph", "agent-base-speed", "GRAPH-MOUSE-MOTION"):
+        print( window["GRAPH"].user_bind_event)
         print('You entered ', values, event)
     # if event in (None, 'Cancel'):  # if user closes window or clicks cancel
     #     break

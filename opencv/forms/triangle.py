@@ -4,6 +4,8 @@ import cv2
 from opencv.forms.color import PURPLE_CONF, Colors, GREEN_CONF
 
 FONT = cv2.FONT_HERSHEY_SIMPLEX
+width = 103
+height = 73
 
 
 def slope(pt1, pt2):
