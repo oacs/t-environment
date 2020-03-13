@@ -172,7 +172,6 @@ class Agent:
             self.con.writeCharacteristic(
                 self.chars.rotation, b_rotation, withResponse=True)
 
-
     def send_dist(self, dest):
         """ Convert the dist(tuple) to byte array and send via BLE """
         b_dest = pack(
@@ -185,9 +184,9 @@ class Agent:
         b_dest = pack(
             "i", speed)
         print(type)
-        print(("s"+type).encode() + b_dest, speed)
+        print(("s" + type).encode() + b_dest, speed)
         self.con.writeCharacteristic(
-            self.chars.config, ("s"+type).encode() + b_dest, withResponse=True)
+            self.chars.config, ("s" + type).encode() + b_dest, withResponse=True)
 
     def update(self, frame, triangle, time_since_last_update):
         """ Update the sensors of the agent via BLE"""
@@ -199,7 +198,6 @@ class Agent:
         # Calc speed
         self.speed = distance(
             self.triangle.center, self.xy) / time_since_last_update
-
 
         # update Time
         self.last_update = time.time()
@@ -262,19 +260,19 @@ class Agent:
         x, y = tuple(map(sum, zip(self.xy, offset)))
         forms = [np.array([
             (x - 12, y - 10), (13 + x, y - 10),
-            ( x, y - 5),
+            (x, y - 5),
         ]),
             np.array([
                 (x - 12, y - 15), (x - 6, y - 15),
-                (x-6, y - 40),
+                (x - 6, y - 40),
             ]),
             np.array([
                 (x + 6, y - 15), (x + 12, y - 15),
-                (x+6, y - 40),
+                (x + 6, y - 40),
             ])
         ]
         for points in forms:
             b = rotate_polygon(points, 0, x, y)
             cv2.polylines(frame, [b], True, (128, 0, 128))
             cv2.fillPoly(frame, [b], (128, 0, 128))
-        return  frame
+        return frame
