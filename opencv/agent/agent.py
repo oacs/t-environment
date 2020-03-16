@@ -284,7 +284,7 @@ class Agent:
                         ('%.2f' % self.rotation) + " C*", self.destination, FONT, 1,
                         255)
 
-    def draw_claw(self, frame: object, offset: object = (0, 0)) -> object:
+    def draw_claw(self, frame: object, offset: tuple = (0, 0)) -> object:
         # cv2.circle(frame, tuple(map(sum, zip(self.xy, offset))), 25, (128, 0, 128), 2);
         x, y = tuple(map(sum, zip(self.xy, offset)))
         forms = [np.array([
