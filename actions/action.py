@@ -31,7 +31,8 @@ action_layout = [
 action_keys = ["action_play_pause", "action_save"]
 
 
-def action_events(event: str, value: object, window: Window):
+# noinspection PyUnusedLocal
+def action_events(event: str, values: dict, window: Window):
     if event == "action_play_pause":
         if window["action_play_pause"].metadata["status"] == "pause":
             window["action_play_pause"].metadata["status"] = "play"

@@ -91,6 +91,8 @@ class Triangle:
         distance2 = distance(self.contours[1][0], self.contours[2][0])
         distance3 = distance(self.contours[0][0], self.contours[2][0])
         minor = min(distance1, distance2, distance3)
+        center = top = (-1, -1)
+
         if minor == distance1:
             top = self.contours[2][0]
             center = between_pt(self.contours[0][0], self.contours[1][0])

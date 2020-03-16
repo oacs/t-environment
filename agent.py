@@ -2,9 +2,6 @@ import PySimpleGUI as sg
 
 from opencv.agent.agent import Agent
 from opencv.main import EnvProcess
-from struct import unpack
-import time
-
 
 agent_gui = sg.Column([
     [sg.Text("Agent color: "), sg.Text("", key="agent-color")],
@@ -12,11 +9,14 @@ agent_gui = sg.Column([
     [sg.Text("Agent speed: "), sg.Text("", key="agent-speed", size=(20, None))],
     [sg.Text("Agent rotation: "), sg.Text("", key="agent-rotation", size=(20, None))],
     [sg.Text("Agent destination: "), sg.Text("", key="agent-destination", size=(20, None))],
-    [sg.Text("Agent base speed clock: "), sg.InputText("", disabled=False, key="agent-base-speed-c-input", size=(80, 20)),
+    [sg.Text("Agent base speed clock: "),
+     sg.InputText("", disabled=False, key="agent-base-speed-c-input", size=(80, 20)),
      sg.Button(key='agent-base-speed-c', visible=True)],
-    [sg.Text("Agent base speed reverse: "), sg.InputText("", disabled=False, key="agent-base-speed-r-input", size=(80, 20)),
+    [sg.Text("Agent base speed reverse: "),
+     sg.InputText("", disabled=False, key="agent-base-speed-r-input", size=(80, 20)),
      sg.Button(key='agent-base-speed-r', visible=True)],
-    [sg.Text("Agent base speed forward: "), sg.InputText("", disabled=False, key="agent-base-speed-f-input", size=(80, 20)),
+    [sg.Text("Agent base speed forward: "),
+     sg.InputText("", disabled=False, key="agent-base-speed-f-input", size=(80, 20)),
      sg.Button(key='agent-base-speed-f', visible=True)],
     [sg.Text("Agent debug msg: "),
      sg.Text("", key="agent-debug", size=(20, None))],
@@ -24,7 +24,8 @@ agent_gui = sg.Column([
 
 last_update = 0
 
-def agent_gui_event(event: str, values, window: sg.Window, env_process: EnvProcess):
+
+def agent_gui_event(event: str, values: dict, window: sg.Window, env_process: EnvProcess):
     if window["agent-column"].metadata != -1:
         ant: Agent
         ant = env_process.ants[window["agent-column"].metadata]
@@ -41,9 +42,8 @@ def agent_gui_event(event: str, values, window: sg.Window, env_process: EnvProce
         #     window["agent-debug"].update(unpack("f", debug))
         #     window.metadata["last_update"] = int(round(time.time() * 1000))
 
-
         if event in ("agent-base-speed-c", "agent-base-speed-r", "agent-base-speed-f"):
             ant: Agent
             ant = env_process.ants[window["agent-column"].metadata]
-            ant.send_speed_base(int(values[event+"-input"]), event.split("agent-base-speed-")[1])
+            ant.send_speed_base(int(values[event + "-input"]), event.split("agent-base-speed-")[1])
             # print(debug)

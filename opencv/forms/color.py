@@ -14,7 +14,7 @@ class Colors(Enum):
     unset = "unset"
 
 
-class ColorFilter():
+class ColorFilter:
     """ Values for color filter """
     low_hsb = np.array(0)
     max_hsb = np.array(0)

@@ -1,7 +1,7 @@
 import math
 
-from cv2 import putText, polylines, FONT_HERSHEY_COMPLEX, moments
 import numpy as np
+from cv2 import putText, polylines, FONT_HERSHEY_COMPLEX
 
 FONT = FONT_HERSHEY_COMPLEX
 

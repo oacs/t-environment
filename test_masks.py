@@ -1,6 +1,7 @@
-from opencv.forms.triangle import get_triangle
-import cv2
 import queue
+
+import cv2
+
 from opencv.main import EnvProcess
 
 main_queue = queue.Queue()

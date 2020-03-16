@@ -1,5 +1,3 @@
-import queue
-
 import cv2
 from PySimpleGUI import Graph, Window
 
@@ -44,7 +42,7 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
         if event == 'GRAPH':
             process_click(values["GRAPH"], env_process, window)
         elif event == "GRAPH-MOUSE-MOTION":
-            window["GRAPH"].metadata["x"]= window["GRAPH"].user_bind_event.x
+            window["GRAPH"].metadata["x"] = window["GRAPH"].user_bind_event.x
             window["GRAPH"].metadata["y"] = window["GRAPH"].user_bind_event.y
         frame = env_process.draw_xy(frame, window["GRAPH"].metadata["x"], window["GRAPH"].metadata["y"])
         frame = env_process.draw_borders(frame)

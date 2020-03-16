@@ -1,8 +1,7 @@
-from bluepy.btle import Scanner, Peripheral
 from uuid import UUID
 
 from opencv.agent.agent import Agent
-from opencv.forms.color import Colors, ColorFilter
+from opencv.forms.color import ColorFilter
 
 SENSOR_SERVICE = UUID("218EE492-8AFB-4CA6-93B6-2D0DBF2F00FE")
 POSSIBLE_ANTS = ["d9:da:40:61:51:42", "cf:95:c4:15:a6:05", "c2:4d:ee:21:f3:6a"]
@@ -30,49 +29,49 @@ def find_ant(know_ants: list, color: ColorFilter):
     return None
 
 
-def connect(ant_address, color):
-    """ Connect to to ant and se the config """
-    print("Connecting")
-
-    ant = Peripheral(deviceAddr=ant_address)
-    print("Connected")
-    services = ant.getServices()
-    print("Fetched services")
-    for service in services:
-        print(service)
-        if service.uuid == SENSOR_SERVICE:
-            print("Found sensor service")
-            chars = service.getCharacteristics()
-            print("Found chars", chars)
-            for char in chars:
-                print(char, char.getHandle())
-                if char.uuid == POSITION_CHAR:
-                    position_char = char.getHandle()
-                    continue
-                if char.uuid == CONFIG_CHAR:
-                    config_char = char.getHandle()
-                    continue
-                if char.uuid == COLOR_CHAR:
-                    read_color = ant.readCharacteristic(
-                        char.getHandle()).decode()
-                if char.uuid == DEBUG_CHAR:
-                    debug_char = char.getHandle()
-                if char.uuid == COM_CHAR:
-                    com_char = char.getHandle()
-                if char.uuid == ROTATION_CHAR:
-                    rotation_char = char.getHandle()
-    if color == read_color:
-        print("setting cng")
-        ant.writeCharacteristic(
-            config_char, str.encode("cng"), withResponse=True)
-        print("set cng")
-        chars = {
-            "position": position_char,
-            "debug": debug_char,
-            "rotation": rotation_char,
-            "com": com_char,
-        }
-
-        return True, color, ant, chars
+# def connect(ant_address, color):
+#     """ Connect to to ant and se the config """
+#     print("Connecting")
+#     read_color
+#     ant = Peripheral(deviceAddr=ant_address)
+#     print("Connected")
+#     services = ant.getServices()
+#     print("Fetched services")
+#     for service in services:
+#         print(service)
+#         if service.uuid == SENSOR_SERVICE:
+#             print("Found sensor service")
+#             chars = service.getCharacteristics()
+#             print("Found chars", chars)
+#             for char in chars:
+#                 print(char, char.getHandle())
+#                 if char.uuid == POSITION_CHAR:
+#                     position_char = char.getHandle()
+#                     continue
+#                 if char.uuid == CONFIG_CHAR:
+#                     config_char = char.getHandle()
+#                     continue
+#                 if char.uuid == COLOR_CHAR:
+#                     read_color = ant.readCharacteristic(
+#                         char.getHandle()).decode()
+#                 if char.uuid == DEBUG_CHAR:
+#                     debug_char = char.getHandle()
+#                 if char.uuid == COM_CHAR:
+#                     com_char = char.getHandle()
+#                 if char.uuid == ROTATION_CHAR:
+#                     rotation_char = char.getHandle()
+#     if read_color != None and color == read_color:
+#         print("setting cng")
+#         ant.writeCharacteristic(
+#             config_char, str.encode("cng"), withResponse=True)
+#         print("set cng")
+#         chars = {
+#             "position": position_char,
+#             "debug": debug_char,
+#             "rotation": rotation_char,
+#             "com": com_char,
+#         }
+#
+#         return True, color, ant, chars
 
 # connect("cf:95:c4:15:a6:05", "R")

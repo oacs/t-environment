@@ -1,18 +1,20 @@
 """ This module is defined for the agent object """
+import logging
 import math
 import queue
-from enum import Enum
-from uuid import UUID
-import time
-from struct import unpack, pack
-import logging
 import sys
+import time
+from enum import Enum
+from struct import unpack, pack
+from typing import List
+from uuid import UUID
+
 import cv2
+import numpy as np
 from bluepy.btle import Peripheral, BTLEException
-from opencv.forms.color import Colors
+
 from opencv.forms.triangle import Triangle, distance
 from opencv.forms.utils import FONT, rotate_polygon
-import numpy as np
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 LOGGER = logging.getLogger("agent")
@@ -31,7 +33,7 @@ class EnumChars(Enum):
     dest = "403dc772-b887-44bd-9105-1215e7886112"
 
 
-class Characteristics():
+class Characteristics:
     """ Characteristics that agents offer to write and read """
 
     position: int
@@ -41,8 +43,10 @@ class Characteristics():
     com: int
     rotation: int
     dest: int
+    pheromones: int
 
     def __init__(self, chars):
+        self.pheromones = -1
         for char in chars:
             if char.uuid == EnumChars.position.value:
                 self.position = char.getHandle()
@@ -67,7 +71,7 @@ class Characteristics():
                 continue
 
 
-def Rotate2D(pts, cnt, ang=math.pi / 4):
+def rotate_2d(pts, cnt, ang=math.pi / 4):
     """ pts = {} Rotates points(nx2) about center cnt(2) by angle ang(1) in radian """
 
     return np.dot(pts - cnt, np.array([(math.cos(ang), math.sin(ang)), (-math.sin(ang), math.cos(ang))]) + cnt)
@@ -89,7 +93,7 @@ class Updatable:
 
 class Agent:
     """ Agent with sensor values and methods to communicate """
-    color: Colors
+    color: str
     chars: Characteristics
     triangle: Triangle
     sending: Updatable
@@ -135,13 +139,14 @@ class Agent:
         services = self.con.getServices()
 
         LOGGER.debug("Fetched services")
+        chars_list = list()
         for service in services:
             if service.uuid == SENSOR_SERVICE:
                 LOGGER.debug("Found sensor service")
-                chars = service.getCharacteristics()
+                chars_list = service.getCharacteristics()
                 LOGGER.debug("Found chars:")
                 # LOGGER.debug(chars)
-        chars = Characteristics(chars)
+        chars = Characteristics(chars_list)
 
         self.connected = True
         return chars
@@ -157,7 +162,7 @@ class Agent:
         self.con.writeCharacteristic(
             self.chars.config, str.encode("cng"), withResponse=True)
         self.__configured = True
-        LOGGER.debug("setted cng")
+        LOGGER.debug("set cng")
 
     def send_pos(self):
         """ Convert the position(tuple) to byte array and send via BLE """
@@ -195,17 +200,17 @@ class Agent:
             b_pheromones.append(temp_y)
 
         print(b_pheromones)
+        self.con.writeCharacteristic(
+            self.chars.pheromones, b_pheromones, withResponse=True)
 
-    def send_speed_base(self, speed, type):
+    def send_speed_base(self, speed, speed_type: str):
         """ Convert the dist(tuple) to byte array and send via BLE """
         b_dest = pack(
             "i", speed)
-        print(type)
-        print(("s" + type).encode() + b_dest, speed)
         self.con.writeCharacteristic(
-            self.chars.config, ("s" + type).encode() + b_dest, withResponse=True)
+            self.chars.config, ("s" + speed_type).encode() + b_dest, withResponse=True)
 
-    def update(self, frame, triangle, time_since_last_update, pheromones):
+    def update(self, triangle, time_since_last_update, pheromones):
         """ Update the sensors of the agent via BLE"""
         if triangle.is_valid() and self.triangle.is_valid():
             self.speed_rotation = distance(
@@ -327,6 +332,15 @@ class Pheromone:
         self.type = get_pheromone_type(pheromone_type)
 
 
-def get_close_pheromones(dist: int, pos: tuple, pheromones: Pheromone):
+def get_close_pheromones(dist: int, pos: tuple, pheromones: List[Pheromone]):
     close_pheromones = list(filter(lambda pheromone: distance(pos, (pheromone.x, pheromone.y)) < dist, pheromones))
     return close_pheromones
+
+
+def __upt_pheromone(pheromone: Pheromone):
+    pheromone.intense -= 1
+    return pheromone
+
+
+def __remove_pheromone(pheromone: Pheromone):
+    return pheromone.intense > 0

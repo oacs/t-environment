@@ -1,21 +1,20 @@
-import time
-import struct
-import queue
+from queue import Queue, Empty
 import threading
-from typing import List, Any
+import time
+from typing import List
 
 import bluepy
 import cv2
 import numpy as np
-from PySimpleGUI import Window, Multiline
+from PySimpleGUI import Multiline
 
-from cli import send_info_message, output_message
+from cli import output_message
+from opencv.agent.agent import Agent, __remove_pheromone as remove_pheromone, \
+    __upt_pheromone as upt_pheromone, Pheromone
 from opencv.ble.config import find_ant
 from opencv.forms.borders import get_rect_borders, crop_frame
-from opencv.forms.triangle import get_triangle, distance, Triangle
-from opencv.forms.color import GREEN_CONF, Colors, PURPLE_CONF, ColorFilter
-from opencv.agent.agent import Agent, Pheromone
-from opencv.forms.utils import approx_xy
+from opencv.forms.color import GREEN_CONF, PURPLE_CONF, ColorFilter
+from opencv.forms.triangle import get_triangle, Triangle
 
 
 class VideoCapture:
@@ -25,7 +24,7 @@ class VideoCapture:
         self.cap = cv2.VideoCapture(name)
         self.cap.set(cv2.CAP_PROP_AUTOFOCUS, auto)
         self.cap.set(cv2.CAP_PROP_FOCUS, focus)
-        self.queue = queue.Queue()
+        self.queue = Queue()
         t = threading.Thread(target=self._reader)
         t.daemon = True
         t.start()
@@ -39,7 +38,7 @@ class VideoCapture:
             if not self.queue.empty():
                 try:
                     self.queue.get_nowait()  # discard previous (unprocessed) frame
-                except queue.Empty:
+                except Empty:
                     pass
             self.queue.put(frame)
 
@@ -100,7 +99,7 @@ def trackbars():
     return [t_low_hue, t_low_sat, t_low_bri], [t_high_hue, t_high_sat, t_high_bri], t_blur, t_arc
 
 
-def callback(x):
+def callback():
     """ Do nothing """
     pass
 
@@ -117,18 +116,18 @@ def test_mask(frame):
         mask = cv2.GaussianBlur(mask, (5, 5), 1)
 
     # mask = cv2.inRange(hsv, lower_blue, upper_blue)
-    res = cv2.bitwise_and(frame, frame)
+    res: object = cv2.bitwise_and(frame, frame)
     contours, _ = cv2.findContours(
         mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    for cnt in contours:
-        area = cv2.contourArea(cnt)
-        if 200 < area < 600:
-            # if area < 10 or area > 100:
-            #     break
-            approx = cv2.approxPolyDP(
-                cnt, (arc / 100) * cv2.arcLength(cnt, True), True)
-            # cv2.drawContours(res, [approx], 0, (255), 5)
-            pos = approx_xy(approx, area, res)
+    # for cnt in contours:
+    #     area = cv2.contourArea(cnt)
+    # if 200 < area < 600:
+    # if area < 10 or area > 100:
+    #     break
+    # approx = cv2.approxPolyDP(
+    #     cnt, (arc / 100) * cv2.arcLength(cnt, True), True)
+    # cv2.drawContours(res, [approx], 0, (255), 5)
+    # pos = approx_xy(approx, area, res)
     return res, mask
 
 
@@ -139,7 +138,7 @@ def check_for_borders(video):
     return borders
 
 
-DEFAULT_COLORS = [GREEN_CONF, PURPLE_CONF]
+DEFAULT_COLORS: List[ColorFilter] = [GREEN_CONF, PURPLE_CONF]
 
 
 class EnvProcess:
@@ -152,23 +151,25 @@ class EnvProcess:
     max_ants: int
     output: Multiline
     started: bool
-    queue: queue.Queue
+    queue: Queue
     looking: bool
     pheromones: list
 
-    def __init__(self, name, auto, focus, possible_colors=DEFAULT_COLORS, max_ants=2):
-        self.queue = queue.Queue()
+    def __init__(self, name, auto, focus, possible_colors=None, max_ants=2):
+        if possible_colors is None:
+            possible_colors = DEFAULT_COLORS
+        self.queue = Queue()
         self.video = VideoCapture(name, auto, focus)
-        self.ants = list()
-        self.unknown_triangles = list()
+        self.ants: List[Agent] = list()
+        self.unknown_triangles: List[Triangle] = list()
         self.possible_colors = possible_colors
         self.max_ants = max_ants
-        self.borders = list()
+        self.borders: List[tuple] = list()
         self.looking = False
         self.started = False
-        self.pheromones = list()
+        self.pheromones: List[Pheromone] = list()
 
-    def start_thread(self, main_queue: queue.Queue):
+    def start_thread(self, main_queue: Queue):
         t = threading.Thread(target=self._gen, args=[main_queue])
         main_queue.put(output_message("Process started", "info"))
         t.daemon = True
@@ -249,7 +250,7 @@ class EnvProcess:
             main_queue.put(output_message(f"Agent {agent.color} gatt error", "error"))
         except bluepy.btle.BTLEInternalError:
             main_queue.put(output_message(f"Agent {agent.color} BTLEInternalError", "error"))
-        except queue.Empty:
+        except Empty:
             pass
         threading.Timer(0.2, function=self.update_agent, args=[agent, following, main_queue]).start()
 
@@ -263,7 +264,7 @@ class EnvProcess:
         if not self.queue.empty():
             try:
                 self.queue.get_nowait()  # discard previous (unprocessed) frame
-            except queue.Empty:
+            except Empty:
                 pass
         # print("gen")
         self.queue.put(frame)
@@ -282,14 +283,7 @@ class EnvProcess:
         return frame
 
     def update_pheromones(self):
-        self.pheromones = list(map(self.__upt_pheromone, self.pheromones))
-        self.pheromones = list(filter(self.__remove_pheromone, self.pheromones))
+        self.pheromones = list(map(upt_pheromone, self.pheromones))
+        self.pheromones = list(filter(remove_pheromone, self.pheromones))
 
         threading.Timer(1, function=self.update_pheromones).start()
-
-    def __upt_pheromone(self, pheromone: Pheromone):
-        pheromone.intense -= 1
-        return pheromone
-
-    def __remove_pheromone(self, pheromone):
-        return pheromone.intense > 0

@@ -1,9 +1,7 @@
-from typing import Any, Union
-
 import PySimpleGUI as sg
 
 from actions.action import action_events
-from theme import DARK, WHITE, INFO, BLACK, DANGER
+from theme import WHITE, INFO, BLACK, DANGER
 
 cli = sg.Column([
     [sg.Multiline("", disabled=True, key="cli-output", size=(20, 14), font=('Helvetica', 15, 'bold'),
@@ -15,11 +13,11 @@ cli = sg.Column([
 cli_keys = ["cli-output", "cli-input", "enter-input", "env-message"]
 
 
-def cli_events(event: str, values: object, window: sg.Window) -> None:
+def cli_events(event: str, values: dict, window: sg.Window) -> None:
     """
     Args:
         event:
-        values:
+        values (object):
         window:
     Returns:
 

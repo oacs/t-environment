@@ -1,15 +1,14 @@
-import PySimpleGUI as sg
-import cv2
-import tool as get_config_file
-import threading
 import queue
+
+import PySimpleGUI as sg
+
+from actions.action import action_layout, action_events, action_keys
 from agent import agent_gui, agent_gui_event
 from cli import cli, cli_events, cli_keys
+from graph import graph, graph_events
 from menu.menu import menu_el
-from actions.action import action_layout, action_events, action_keys
-from theme import DARK, WHITE
-from graph import graph, graph_events, graph_keys
 from opencv.main import EnvProcess
+from theme import DARK, WHITE
 
 sg.theme('DarkBlack1')  # Add a touch of color
 # All the stuff inside your window.
@@ -41,11 +40,11 @@ cli_output: sg.Multiline = window["cli-output"]
 cli_output.expand(expand_x=True, expand_row=True, expand_y=True)
 
 
-def process_events(event: str, values: list, window: sg.Window) -> None:
-    if event in action_keys:
-        action_events(event, values, window)
-    if event in cli_keys:
-        cli_events(event, values, window)
+def process_events(event_type: str, event_values: dict, _window: sg.Window) -> None:
+    if event_type in action_keys:
+        action_events(event_type, event_values, _window)
+    if event_type in cli_keys:
+        cli_events(event_type, event_values, _window)
 
 
 # Event Loop to process "events" and get the "values" of the inputs
@@ -73,7 +72,7 @@ while True:
         # print(message)
     # print(event)
     if event not in ("__TIMEOUT__", "graph", "agent-base-speed", "GRAPH-MOUSE-MOTION"):
-        print( window["GRAPH"].user_bind_event)
+        print(window["GRAPH"].user_bind_event)
         print('You entered ', values, event)
     # if event in (None, 'Cancel'):  # if user closes window or clicks cancel
     #     break
