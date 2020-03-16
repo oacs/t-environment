@@ -13,8 +13,8 @@ def approx_xy(approx, area: object, res: object) -> tuple:
     polylines(res, approx, True, 255, 5)
     x: int = approx.ravel()[0]
     y: int = approx.ravel()[1]
-    putText(res, "Rectangle " + str(area),
-            (x, y), FONT, 1, 255)
+    # putText(res, "Rectangle " + str(area),
+    #         (x, y), FONT, 1, 255)
     return x, y
 
 
