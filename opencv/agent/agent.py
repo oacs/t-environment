@@ -1,5 +1,6 @@
 """ This module is defined for the agent object """
 import math
+import queue
 from enum import Enum
 from uuid import UUID
 import time
@@ -79,6 +80,7 @@ class Service:
 class Updatable:
     """ Values that the server send to the agent """
     rotation = False
+    pheromone = "none"
 
     def __init__(self):
         # self.radius is an instance variable
@@ -116,6 +118,7 @@ class Agent:
             self.set_config()
         self.sending = Updatable()
         self.triangle = Triangle()
+        self.pheromones = queue.Queue()
 
     def connect(self):
         """ Connect to to ant and se the config """
@@ -179,6 +182,20 @@ class Agent:
         self.con.writeCharacteristic(
             self.chars.dest, b_dest, withResponse=True)
 
+    def send_pheromones(self, pheromones):
+        b_pheromones = bytearray()
+        length = min(29, len(pheromones))
+        b_pheromones.append(pack("i", length)[0][0:1])
+        for i in range(0, length):
+            temp_x = pack("i", pheromones[i].x)[0]
+            temp_y = pack("i", pheromones[i].y)[0]
+            temp_x = temp_x[0:3]
+            temp_y = temp_y[0:3]
+            b_pheromones.append(temp_x)
+            b_pheromones.append(temp_y)
+
+        print(b_pheromones)
+
     def send_speed_base(self, speed, type):
         """ Convert the dist(tuple) to byte array and send via BLE """
         b_dest = pack(
@@ -188,7 +205,7 @@ class Agent:
         self.con.writeCharacteristic(
             self.chars.config, ("s" + type).encode() + b_dest, withResponse=True)
 
-    def update(self, frame, triangle, time_since_last_update):
+    def update(self, frame, triangle, time_since_last_update, pheromones):
         """ Update the sensors of the agent via BLE"""
         if triangle.is_valid() and self.triangle.is_valid():
             self.speed_rotation = distance(
@@ -204,6 +221,9 @@ class Agent:
 
         # update position
         self.xy = self.triangle.center
+
+        if self.sending.pheromone is not "none":
+            self.send_pheromones(get_close_pheromones(100, self.xy, pheromones))
 
         self.read_message()
         self.send_rotation()
@@ -222,8 +242,17 @@ class Agent:
             self.destination = (
                 unpack("i", message[0:4])[0], unpack("i", message[5:9])[0])
 
-            self.con.writeCharacteristic(
-                self.chars.com, "0".encode(), withResponse=True)
+        # print(message[0], b'\x11', message, message[0] == b'\x11')
+        if message[0] == 17:
+            intense = unpack(">i", message[2:6])[0]
+            print(intense, self.xy)
+            self.pheromones.put(Pheromone(self.xy[0], self.xy[1], intense, message[1]))
+        if message[0] == 18:
+            self.sending.pheromones = get_pheromone_type(message[1])
+
+        self.con.writeCharacteristic(
+            self.chars.com, "0".encode(), withResponse=True)
+        return
 
     def draw_dest(self, frame, offset=(0, 0)):
         """ Draw the destination with a circle and a line from top to pnt """
@@ -276,3 +305,28 @@ class Agent:
             cv2.polylines(frame, [b], True, (128, 0, 128))
             cv2.fillPoly(frame, [b], (128, 0, 128))
         return frame
+
+
+def get_pheromone_type(pheromone_type):
+    if pheromone_type == b"0x12":
+        return "searching"
+    elif pheromone_type == b"0x00":
+        return "none"
+
+
+class Pheromone:
+    x: int
+    y: int
+    intense: int
+    type: str
+
+    def __init__(self, x, y, intense, pheromone_type):
+        self.x = x
+        self.y = y
+        self.intense = intense
+        self.type = get_pheromone_type(pheromone_type)
+
+
+def get_close_pheromones(dist: int, pos: tuple, pheromones: Pheromone):
+    close_pheromones = list(filter(lambda pheromone: distance(pos, (pheromone.x, pheromone.y)) < dist, pheromones))
+    return close_pheromones

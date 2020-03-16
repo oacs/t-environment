@@ -14,7 +14,7 @@ from opencv.ble.config import find_ant
 from opencv.forms.borders import get_rect_borders, crop_frame
 from opencv.forms.triangle import get_triangle, distance, Triangle
 from opencv.forms.color import GREEN_CONF, Colors, PURPLE_CONF, ColorFilter
-from opencv.agent.agent import Agent
+from opencv.agent.agent import Agent, Pheromone
 from opencv.forms.utils import approx_xy
 
 
@@ -154,6 +154,7 @@ class EnvProcess:
     started: bool
     queue: queue.Queue
     looking: bool
+    pheromones: list
 
     def __init__(self, name, auto, focus, possible_colors=DEFAULT_COLORS, max_ants=2):
         self.queue = queue.Queue()
@@ -165,6 +166,7 @@ class EnvProcess:
         self.borders = list()
         self.looking = False
         self.started = False
+        self.pheromones = list()
 
     def start_thread(self, main_queue: queue.Queue):
         t = threading.Thread(target=self._gen, args=[main_queue])
@@ -179,6 +181,7 @@ class EnvProcess:
         frame = self.video.read()
         self.put_on_queue(frame)
         main_queue.put(output_message("Searching for borders", "info"))
+        self.update_pheromones()
         while len(self.borders) != 2:
             self.borders = check_for_borders(self.video)
 
@@ -221,11 +224,11 @@ class EnvProcess:
         self.looking = False
 
     def update_agent(self, agent, following, main_queue):
+        time_since_last_update = (time.time() - agent.last_update) * 1000
+        frame = self.video.read()
+        cropped = crop_frame(frame, self.borders)
+        triangle = get_triangle(cropped, agent.color)
         try:
-            time_since_last_update = (time.time() - agent.last_update) * 1000
-            frame = self.video.read()
-            cropped = crop_frame(frame, self.borders)
-            triangle = get_triangle(cropped, agent.color)
             if triangle.is_valid():
                 if following:
                     dest = get_triangle(cropped, "G")
@@ -233,18 +236,21 @@ class EnvProcess:
                         agent.destination = dest.center
                         agent.send_dist(dest.center)
                 agent.update(cropped, triangle,
-                             time_since_last_update)
+                             time_since_last_update, self.pheromones)
+            pheromone = agent.pheromones.get_nowait()
+            print(pheromone)
+            if pheromone is not None:
+                self.pheromones.append(pheromone)
+
         except bluepy.btle.BTLEDisconnectError:
             main_queue.put(output_message(f"Agent {agent.color} got disconnected. Trying to reconnect", "error"))
             agent.con.disconnect()
-            # time.sleep(60)
-            # agent.connect()
-            # main_queue.put(output_message(f"Agent {agent.color} got reconnected.", "info"))
-
         except bluepy.btle.BTLEGattError:
             main_queue.put(output_message(f"Agent {agent.color} gatt error", "error"))
         except bluepy.btle.BTLEInternalError:
             main_queue.put(output_message(f"Agent {agent.color} BTLEInternalError", "error"))
+        except queue.Empty:
+            pass
         threading.Timer(0.2, function=self.update_agent, args=[agent, following, main_queue]).start()
 
     def draw_borders(self, frame):
@@ -267,3 +273,23 @@ class EnvProcess:
             frame = cv2.putText(frame, f"( {x}, {y} )", (self.borders[0][0] - 50, 50), cv2.FONT_HERSHEY_COMPLEX, 0.5,
                                 (140, 25, 78))
         return frame
+
+    def draw_pheromones(self, frame):
+        for pheromone in self.pheromones:
+            frame = cv2.circle(frame, (pheromone.x + self.borders[1][0], pheromone.y + self.borders[1][1]),
+                               pheromone.intense, (255, 140, 20))
+
+        return frame
+
+    def update_pheromones(self):
+        self.pheromones = list(map(self.__upt_pheromone, self.pheromones))
+        self.pheromones = list(filter(self.__remove_pheromone, self.pheromones))
+
+        threading.Timer(1, function=self.update_pheromones).start()
+
+    def __upt_pheromone(self, pheromone: Pheromone):
+        pheromone.intense -= 1
+        return pheromone
+
+    def __remove_pheromone(self, pheromone):
+        return pheromone.intense > 0
