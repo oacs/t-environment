@@ -22,6 +22,9 @@ class VideoCapture:
 
     def __init__(self, name, auto, focus):
         self.cap = cv2.VideoCapture(name)
+        if self.cap.isOpened():
+            self.width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # float
+            self.height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float
         self.cap.set(cv2.CAP_PROP_AUTOFOCUS, auto)
         self.cap.set(cv2.CAP_PROP_FOCUS, focus)
         self.queue = Queue()
@@ -154,6 +157,7 @@ class EnvProcess:
     queue: Queue
     looking: bool
     pheromones: list
+    run: bool
 
     def __init__(self, name, auto, focus, possible_colors=None, max_ants=2):
         if possible_colors is None:
@@ -168,6 +172,7 @@ class EnvProcess:
         self.looking = False
         self.started = False
         self.pheromones: List[Pheromone] = list()
+        self.run = False
 
     def start_thread(self, main_queue: Queue):
         t = threading.Thread(target=self._gen, args=[main_queue])
@@ -179,26 +184,34 @@ class EnvProcess:
     def _gen(self, main_queue):
         """ Main """
 
-        frame = self.video.read()
-        self.put_on_queue(frame)
-        main_queue.put(output_message("Searching for borders", "info"))
-        self.update_pheromones()
-        while len(self.borders) != 2:
-            self.borders = check_for_borders(self.video)
-
-        main_queue.put(output_message(
-            "Setting config zone (" + str(self.borders[1][0] + 150) + ", " + str(self.borders[1][1] + 250) + ")",
-            "info"))
-        self.config_zone = [(0, 0), (self.borders[1][0] + 150, self.borders[1][1] + 250)]
-        main_queue.put(output_message("Looking for ants", "info"))
-
         while True:
-            frame = self.video.read()
-            cropped = crop_frame(frame, self.borders)
+            if self.run:
+                frame = self.video.read()
+                self.put_on_queue(frame)
+                main_queue.put(output_message("Searching for borders", "info"))
+                self.update_pheromones()
+                while len(self.borders) != 2:
+                    self.borders = check_for_borders(self.video)[0]
 
-            if len(self.ants) != self.max_ants and not self.looking:
-                threading.Thread(target=self.look_for_new_ants, args=[cropped, main_queue]).start()
-            self.put_on_queue(frame)
+                main_queue.put(output_message(
+                    "Setting config zone (" + str(self.borders[1][0] + 150) + ", " + str(self.borders[1][1] + 250) + ")",
+                    "info"))
+                self.config_zone = [(0, 0), (self.borders[1][0] + 150, self.borders[1][1] + 250)]
+                main_queue.put(output_message("Looking for ants", "info"))
+
+                while True:
+                    frame = self.video.read()
+                    cropped = crop_frame(frame, self.borders)
+
+                    if len(self.ants) != self.max_ants and not self.looking:
+                        threading.Thread(target=self.look_for_new_ants, args=[cropped, main_queue]).start()
+                    self.put_on_queue(frame)
+
+                    if not self.run:
+                        break
+            else:
+                frame = self.video.read()
+                self.put_on_queue(frame)
 
     def read(self):
         """ Return a frame """

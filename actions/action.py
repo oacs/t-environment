@@ -1,4 +1,5 @@
 from PySimpleGUI import Button, Window
+
 from theme import WHITE
 
 action_layout = [
@@ -32,11 +33,14 @@ action_keys = ["action_play_pause", "action_save"]
 
 
 # noinspection PyUnusedLocal
-def action_events(event: str, values: dict, window: Window):
+def action_events(event: str, values: dict, window: Window, env_process: object):
     if event == "action_play_pause":
         if window["action_play_pause"].metadata["status"] == "pause":
             window["action_play_pause"].metadata["status"] = "play"
+            env_process.run = False
         else:
             window["action_play_pause"].metadata["status"] = "pause"
+            env_process.run = True
+
         window["action_play_pause"].update(
             image_filename="assets/img/" + window["action_play_pause"].metadata["status"] + ".png")
