@@ -86,6 +86,14 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
         frame = get_rect_borders(env_process.read())[1]
         update_image(frame, window, "BORDERS-GRAPH")
 
+    if event == "-TAB-GROUP-":
+        if values["-TAB-GROUP-"] == "-COLORS-TAB-":
+            window["mask-column"].update(visible=True)
+            window["agent-column"].update(visible=False)
+        else:
+            window["agent-column"].update(visible=True)
+            window["mask-column"].update(visible=False)
+
 
 def update_image(frame, window, graph):
     img_bytes = cv2.imencode('.png', frame)[1].tobytes()  # ditto
