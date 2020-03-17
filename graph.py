@@ -3,6 +3,7 @@ from PySimpleGUI import Graph, Window, Text, Input, Tab, TabGroup, OK
 
 from opencv.agent.agent import Agent
 from opencv.forms.borders import get_rect_borders
+from opencv.forms.color import ColorFilter, Colors
 from opencv.forms.triangle import distance
 from opencv.main import EnvProcess
 
@@ -59,7 +60,8 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
                 window["MAIN-GRAPH"].metadata["x"] = window["MAIN-GRAPH"].user_bind_event.x
                 window["MAIN-GRAPH"].metadata["y"] = window["MAIN-GRAPH"].user_bind_event.y
             if env_process.run:
-                frame = env_process.draw_xy(frame, window["MAIN-GRAPH"].metadata["x"], window["MAIN-GRAPH"].metadata["y"])
+                frame = env_process.draw_xy(frame, window["MAIN-GRAPH"].metadata["x"],
+                                            window["MAIN-GRAPH"].metadata["y"])
                 frame = env_process.draw_borders(frame)
                 frame = env_process.draw_pheromones(frame)
                 for ant in env_process.ants:
@@ -68,6 +70,16 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
             update_image(frame, window, "MAIN-GRAPH")
     if values["-TAB-GROUP-"] == "-COLORS-TAB-":
         frame = env_process.read()
+        frame = ColorFilter(
+            Colors.unset,
+            values["mask-min-hue"],
+            values["mask-max-hue"],
+            values["mask-min-sat"],
+            values["mask-max-sat"],
+            values["mask-min-val"],
+            values["mask-max-val"],
+            0, 0, 0
+        ).get_mask(frame)
         update_image(frame, window, "COLORS-GRAPH")
 
     if values["-TAB-GROUP-"] == "-BORDERS-TAB-":

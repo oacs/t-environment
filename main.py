@@ -3,7 +3,7 @@ import queue
 import PySimpleGUI as sg
 
 from actions.action import action_layout, action_events, action_keys
-from agent import agent_gui, agent_gui_event
+from tool.tools import tools_gui, tools_events
 from cli import cli, cli_events, cli_keys
 from graph import graph_tabs, graph_events
 from menu.menu import menu_el
@@ -19,7 +19,7 @@ actions = sg.Column(layout=[action_layout],
 layout = [
     [menu_el],
     [actions],
-    [graph_tabs, agent_gui],
+    [graph_tabs, tools_gui],
     [cli],
 ]
 
@@ -32,14 +32,14 @@ window = sg.Window('UCAB-Bot Environment', layout, location=(0, 0), margins=(0, 
 graph_elem = window['MAIN-GRAPH']  # type sg.Graph
 graph_elem.bind('<Motion>', "-MOUSE-MOTION")
 main_queue = queue.Queue()
-env_process = EnvProcess(0, 0, 4, max_ants=1)
+env_process = EnvProcess(2, 0, 4, max_ants=1)
 env_process.start_thread(main_queue)
-window["MAIN-GRAPH"].set_size((env_process.video.width, env_process.video.height))
-window["COLORS-GRAPH"].set_size((env_process.video.width, env_process.video.height))
-window["BORDERS-GRAPH"].set_size((env_process.video.width, env_process.video.height))
-print((env_process.video.width, env_process.video.height))
+# window["MAIN-GRAPH"].set_size((env_process.video.width, env_process.video.height))
+# window["COLORS-GRAPH"].set_size((env_process.video.width, env_process.video.height))
+# window["BORDERS-GRAPH"].set_size((env_process.video.width, env_process.video.height))
+# print((env_process.video.width, env_process.video.height))
 
-cli.set_size((env_process.video.width, env_process.video.height))
+# cli.set_size((env_process.video.width, env_process.video.height))
 actions.expand(expand_x=True, expand_y=False, expand_row=False)
 # cli.expand(expand_y=True)
 cli_output: sg.Multiline = window["cli-output"]
@@ -60,7 +60,7 @@ while True:
 
     process_events(event, values, window, env_process)
     graph_events(event, values, window, env_process)
-    agent_gui_event(event, values, window, env_process)
+    tools_events(event, values, window, env_process)
     # print(main_queue.qsize())
     try:  # see if something has been posted to Queue
         message = main_queue.get_nowait()
