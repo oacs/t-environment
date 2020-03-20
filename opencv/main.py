@@ -158,6 +158,7 @@ class EnvProcess:
     looking: bool
     pheromones: list
     run: bool
+    thread: threading.Thread
 
     def __init__(self, name, auto, focus, possible_colors=None, max_ants=2):
         if possible_colors is None:
@@ -175,11 +176,11 @@ class EnvProcess:
         self.run = False
 
     def start_thread(self, main_queue: Queue):
-        t = threading.Thread(target=self._gen, args=[main_queue])
+        self.thread = threading.Thread(target=self._gen, args=[main_queue])
         main_queue.put(output_message("Process started", "info"))
-        t.daemon = True
+        self.thread.daemon = True
         self.started = True
-        t.start()
+        self.thread.start()
 
     def _gen(self, main_queue):
         """ Main """
@@ -194,17 +195,20 @@ class EnvProcess:
                     self.borders = check_for_borders(self.video)[0]
 
                 main_queue.put(output_message(
-                    "Setting config zone (" + str(self.borders[1][0] + 150) + ", " + str(self.borders[1][1] + 250) + ")",
+                    "Setting config zone (" + str(self.borders[1][0] + 150) + ", " + str(
+                        self.borders[1][1] + 250) + ")",
                     "info"))
                 self.config_zone = [(0, 0), (self.borders[1][0] + 150, self.borders[1][1] + 250)]
                 main_queue.put(output_message("Looking for ants", "info"))
-
+                frame = self.video.read()
+                cropped = crop_frame(frame, self.borders)
+                if len(self.ants) != self.max_ants and not self.looking:
+                    self.looking = True
+                    threading.Timer(0, function=self.look_for_new_ants, args=[cropped, main_queue]).start()
                 while True:
                     frame = self.video.read()
                     cropped = crop_frame(frame, self.borders)
 
-                    if len(self.ants) != self.max_ants and not self.looking:
-                        threading.Thread(target=self.look_for_new_ants, args=[cropped, main_queue]).start()
                     self.put_on_queue(frame)
 
                     if not self.run:
@@ -218,7 +222,6 @@ class EnvProcess:
         return self.queue.get()
 
     def look_for_new_ants(self, frame, main_queue):
-        self.looking = True
         # print("Looking")
         color: ColorFilter
         for color in self.possible_colors:
@@ -235,7 +238,13 @@ class EnvProcess:
                         self.update_agent(new_ant, new_ant.color == "P", main_queue)
                     else:
                         self.possible_colors.append(color)
-        self.looking = False
+        frame = self.video.read()
+        cropped = crop_frame(frame, self.borders)
+        if len(self.ants) != self.max_ants:
+            self.looking = True
+            threading.Timer(2, function=self.look_for_new_ants, args=[cropped, main_queue]).start()
+        else:
+            self.looking = False
 
     def update_agent(self, agent, following, main_queue):
         time_since_last_update = (time.time() - agent.last_update) * 1000
@@ -249,7 +258,7 @@ class EnvProcess:
                     if dest.is_valid():
                         agent.destination = dest.center
                         agent.send_dist(dest.center)
-                agent.update(cropped, triangle,
+                agent.update(triangle,
                              time_since_last_update, self.pheromones)
             pheromone = agent.pheromones.get_nowait()
             print(pheromone)
@@ -290,7 +299,8 @@ class EnvProcess:
 
     def draw_pheromones(self, frame):
         for pheromone in self.pheromones:
-            frame = cv2.circle(frame, (pheromone.x + self.borders[1][0], pheromone.y + self.borders[1][1]),
+            frame = cv2.circle(frame, (pheromone.x + min(self.borders[1][0], self.borders[0][0]),
+                                       pheromone.y + min(self.borders[1][1], self.borders[0][1])),
                                pheromone.intense, (255, 140, 20))
 
         return frame
@@ -299,4 +309,4 @@ class EnvProcess:
         self.pheromones = list(map(upt_pheromone, self.pheromones))
         self.pheromones = list(filter(remove_pheromone, self.pheromones))
 
-        threading.Timer(1, function=self.update_pheromones).start()
+        threading.Timer(60, function=self.update_pheromones).start()

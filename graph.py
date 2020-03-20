@@ -1,7 +1,7 @@
 import cv2
 from PySimpleGUI import Graph, Window, Text, Input, Tab, TabGroup, OK
 
-from opencv.agent.agent import Agent
+from opencv.agent.agent import Agent, Pheromone
 from opencv.forms.borders import get_rect_borders
 from opencv.forms.color import ColorFilter, Colors
 from opencv.forms.triangle import distance
@@ -32,14 +32,25 @@ graph_keys = ["MAIN-GRAPH", "GRAPH-MOUSE-MOTION", "-TAB-GROUP-"]
 def process_click(coord: tuple, env_process: EnvProcess, window: Window):
     x, y = coord
     ant: Agent
+    x_offset = min(env_process.borders[1][0], env_process.borders[0][0]);
+    y_offset = min(env_process.borders[1][1], env_process.borders[0][1]);
+
     for i, ant in enumerate(env_process.ants):
         size = distance(ant.triangle.center, ant.triangle.top)
         ax, ay = ant.xy
-        ax += env_process.borders[1][0]
-        ay += env_process.borders[1][1]
+        ax += x_offset
+        ay += y_offset
         if (ax - (size / 2)) <= x <= (ax + (size / 2)) and (ay - (size / 2)) <= y <= (ay + (size / 2)):
             window["agent-column"].metadata = i
             return
+
+    if (x_offset < x < max(env_process.borders[1][0],
+                           env_process.borders[0][0]) and
+            y_offset < y < max(env_process.borders[1][1],
+                               env_process.borders[0][1])):
+        env_process.pheromones.append(
+            Pheromone(x - x_offset,
+                      y - y_offset, 5, b"0x12"))
 
 
 def graph_events(event: str, values: dict, window: Window, env_process: EnvProcess) -> None:
@@ -65,8 +76,10 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
                 frame = env_process.draw_borders(frame)
                 frame = env_process.draw_pheromones(frame)
                 for ant in env_process.ants:
-                    frame = ant.draw_claw(frame, env_process.borders[1])
-                    ant.draw_dest(frame, env_process.borders[1])
+                    frame = ant.draw_claw(frame, (min(env_process.borders[1][0], env_process.borders[0][0]),
+                                                  min(env_process.borders[1][1], env_process.borders[0][1])))
+                    ant.draw_dest(frame, (min(env_process.borders[1][0], env_process.borders[0][0]),
+                                          min(env_process.borders[1][1], env_process.borders[0][1])))
             update_image(frame, window, "MAIN-GRAPH")
     if values["-TAB-GROUP-"] == "-COLORS-TAB-":
         frame = env_process.read()

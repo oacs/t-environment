@@ -42,14 +42,14 @@ class ColorFilter:
         return mask
 
 
-GREEN_CONF = ColorFilter(Colors.green, low_hue=35, max_hue=75,
-                         low_sat=50, max_sat=190,
+GREEN_CONF = ColorFilter(Colors.green, low_hue=35, max_hue=50,
+                         low_sat=90, max_sat=190,
                          low_bri=90, max_bri=160,
                          arc=8,
                          min_area=190, max_area=900
                          )
 
-PURPLE_CONF = ColorFilter(Colors.purple, low_hue=90, max_hue=180,
+PURPLE_CONF = ColorFilter(Colors.purple, low_hue=90, max_hue=145,
                           low_sat=50, max_sat=130,
                           low_bri=50, max_bri=140,
                           arc=8,

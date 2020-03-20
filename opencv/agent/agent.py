@@ -4,6 +4,8 @@ import math
 import queue
 import sys
 import time
+from collections import OrderedDict
+
 from enum import Enum
 from struct import unpack, pack
 from typing import List
@@ -31,6 +33,7 @@ class EnumChars(Enum):
     debug = "645e1252-55dd-4604-8d35-add29319725b"
     com = "a6f2eee3-d71e-4e77-a9fa-66fb946c4e96"
     dest = "403dc772-b887-44bd-9105-1215e7886112"
+    pheromones = "5b3afbbc-c715-4d31-942d-e4d63bf04eae"
 
 
 class Characteristics:
@@ -48,6 +51,7 @@ class Characteristics:
     def __init__(self, chars):
         self.pheromones = -1
         for char in chars:
+            print(char.uuid, char.getHandle())
             if char.uuid == EnumChars.position.value:
                 self.position = char.getHandle()
                 continue
@@ -68,6 +72,9 @@ class Characteristics:
                 continue
             if char.uuid == EnumChars.dest.value:
                 self.dest = char.getHandle()
+                continue
+            if char.uuid == EnumChars.pheromones.value:
+                self.pheromones = char.getHandle()
                 continue
 
 
@@ -121,6 +128,7 @@ class Agent:
             self.color = self.con.readCharacteristic(self.chars.color).decode()
             self.set_config()
         self.sending = Updatable()
+        # self.sending.pheromone = True
         self.triangle = Triangle()
         self.pheromones = queue.Queue()
 
@@ -147,7 +155,6 @@ class Agent:
                 LOGGER.debug("Found chars:")
                 # LOGGER.debug(chars)
         chars = Characteristics(chars_list)
-
         self.connected = True
         return chars
 
@@ -188,20 +195,27 @@ class Agent:
             self.chars.dest, b_dest, withResponse=True)
 
     def send_pheromones(self, pheromones):
-        b_pheromones = bytearray()
-        length = min(29, len(pheromones))
-        b_pheromones.append(pack("i", length)[0][0:1])
+        b_pheromones = b''
+        pheromones = list(OrderedDict.fromkeys(
+            pheromones))  # remove duplicates
+        length = min(20, len(pheromones))
+        b_length = pack("i", length)
+        b_length = b_length[0:1]
+        b_pheromones += b_length
         for i in range(0, length):
-            temp_x = pack("i", pheromones[i].x)[0]
-            temp_y = pack("i", pheromones[i].y)[0]
+            temp_x = pack("i", pheromones[i].x)
+            temp_y = pack("i", pheromones[i].y)
             temp_x = temp_x[0:3]
             temp_y = temp_y[0:3]
-            b_pheromones.append(temp_x)
-            b_pheromones.append(temp_y)
+            b_pheromones += temp_x
+            b_pheromones += temp_y
+            print(pheromones[i].x, pheromones[i].y)
 
         print(b_pheromones)
         self.con.writeCharacteristic(
             self.chars.pheromones, b_pheromones, withResponse=True)
+        debug = self.con.readCharacteristic(self.chars.debug)
+        print(unpack("i", debug))
 
     def send_speed_base(self, speed, speed_type: str):
         """ Convert the dist(tuple) to byte array and send via BLE """
@@ -228,7 +242,9 @@ class Agent:
         self.xy = self.triangle.center
 
         if self.sending.pheromone is not "none":
-            self.send_pheromones(get_close_pheromones(100, self.xy, pheromones))
+            self.send_pheromones(get_close_pheromones(
+                12000, self.xy, pheromones))
+            self.sending.pheromone = "none"
 
         self.read_message()
         self.send_rotation()
@@ -249,11 +265,12 @@ class Agent:
 
         # print(message[0], b'\x11', message, message[0] == b'\x11')
         if message[0] == 17:
-            intense = unpack(">i", message[2:6])[0]
+            intense = unpack("i", message[2:6])[0]
             print(intense, self.xy)
-            self.pheromones.put(Pheromone(self.xy[0], self.xy[1], intense, message[1]))
+            self.pheromones.put(
+                Pheromone(self.xy[0], self.xy[1], intense, message[1]))
         if message[0] == 18:
-            self.sending.pheromones = get_pheromone_type(message[1])
+            self.sending.pheromone = get_pheromone_type(message[1])
 
         self.con.writeCharacteristic(
             self.chars.com, "0".encode(), withResponse=True)
@@ -266,7 +283,8 @@ class Agent:
                      tuple(map(sum, zip(self.triangle.top, offset))), (200, 150, 50), 2)
             cv2.line(frame, tuple(map(sum, zip(self.triangle.top, offset))),
                      tuple(map(sum, zip(self.destination, offset))), (200, 150, 50), 2)
-            cv2.circle(frame, tuple(map(sum, zip(self.destination, offset))), 5, 200, 1)
+            cv2.circle(frame, tuple(
+                map(sum, zip(self.destination, offset))), 5, 200, 1)
 
     def draw_distance(self, frame, offset=(0, 0)):
         """ Draw the distance with a circle and a line from top to pnt """
@@ -274,7 +292,8 @@ class Agent:
             cv2.line(frame, tuple(map(sum, zip(self.triangle.center, offset))),
                      tuple(map(sum, zip(self.triangle.top, offset))), (200, 150, 50), 2)
             cv2.putText(frame,
-                        ('%.2f' % (distance(self.triangle.center, self.destination) / 5)) + " cm", self.destination,
+                        ('%.2f' % (distance(self.triangle.center,
+                                            self.destination) / 5)) + " cm", self.destination,
                         FONT, 1,
                         255)
 
@@ -286,7 +305,8 @@ class Agent:
             cv2.line(frame, tuple(map(sum, zip(self.triangle.center, offset))),
                      tuple(map(sum, zip(self.triangle.top, offset))), (200, 150, 50), 2)
             cv2.putText(frame,
-                        ('%.2f' % self.rotation) + " C*", self.destination, FONT, 1,
+                        ('%.2f' % self.rotation) +
+                        " C*", self.destination, FONT, 1,
                         255)
 
     def draw_claw(self, frame: object, offset: tuple = (0, 0)) -> object:
@@ -313,7 +333,7 @@ class Agent:
 
 
 def get_pheromone_type(pheromone_type):
-    if pheromone_type == b"0x12":
+    if pheromone_type == 18:
         return "searching"
     elif pheromone_type == b"0x00":
         return "none"
@@ -331,9 +351,18 @@ class Pheromone:
         self.intense = intense
         self.type = get_pheromone_type(pheromone_type)
 
+    def __eq__(self, other):
+        return self.x == other.x \
+            and self.y == other.y
+
+    def __hash__(self):
+        return hash(('x', self.x,
+                     'y', self.y))
+
 
 def get_close_pheromones(dist: int, pos: tuple, pheromones: List[Pheromone]):
-    close_pheromones = list(filter(lambda pheromone: distance(pos, (pheromone.x, pheromone.y)) < dist, pheromones))
+    close_pheromones = list(filter(lambda pheromone: distance(
+        pos, (pheromone.x, pheromone.y)) < dist, pheromones))
     return close_pheromones
 
 
