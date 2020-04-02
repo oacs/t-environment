@@ -130,6 +130,7 @@ class Agent:
         self.sending = Updatable()
         # self.sending.pheromone = True
         self.triangle = Triangle()
+        self.rotation = 360
         self.pheromones = queue.Queue()
 
     def connect(self):
@@ -180,12 +181,14 @@ class Agent:
 
     def send_rotation(self):
         """ Convert the rotation(float) to byte array and send via BLE """
-        if self.sending.rotation:
-            self.rotation = self.triangle.calc_rotation(
+        if self.destination:
+            new_rotation = self.triangle.calc_rotation(
                 self.destination)
-            b_rotation = pack("ff", self.rotation, 0)
-            self.con.writeCharacteristic(
-                self.chars.rotation, b_rotation, withResponse=True)
+            if self.rotation == 360 or abs(self.rotation - new_rotation) > 3 :
+                self.rotation = new_rotation
+                b_rotation = pack("ff", self.rotation, 0)
+                self.con.writeCharacteristic(
+                    self.chars.rotation, b_rotation, withResponse=True)
 
     def send_dist(self, dest):
         """ Convert the dist(tuple) to byte array and send via BLE """
@@ -232,6 +235,7 @@ class Agent:
         self.triangle = triangle
 
         # Calc speed
+        prev_speed = self.speed
         self.speed = distance(
             self.triangle.center, self.xy) / time_since_last_update
 
@@ -239,7 +243,8 @@ class Agent:
         self.last_update = time.time()
 
         # update position
-        self.xy = self.triangle.center
+        prev_position = self.xy
+        new_position = self.triangle.center
 
         if self.sending.pheromone is not "none":
             self.send_pheromones(get_close_pheromones(
@@ -247,8 +252,12 @@ class Agent:
             self.sending.pheromone = "none"
 
         self.read_message()
+        if abs(distance(prev_position, new_position)) > 6:
+            self.xy = self.triangle.center
+            self.send_pos()
+        else:
+            self.xy = prev_position
         self.send_rotation()
-        self.send_pos()
 
     def read_message(self):
         """ Check the com char of the agent and process the msg """

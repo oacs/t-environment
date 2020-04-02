@@ -74,6 +74,7 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
                 frame = env_process.draw_xy(frame, window["MAIN-GRAPH"].metadata["x"],
                                             window["MAIN-GRAPH"].metadata["y"])
                 frame = env_process.draw_borders(frame)
+                frame = env_process.draw_config(frame)
                 frame = env_process.draw_pheromones(frame)
                 for ant in env_process.ants:
                     frame = ant.draw_claw(frame, (min(env_process.borders[1][0], env_process.borders[0][0]),

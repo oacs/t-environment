@@ -4,8 +4,8 @@ from opencv.agent.agent import Agent
 from opencv.forms.color import ColorFilter
 
 SENSOR_SERVICE = UUID("218EE492-8AFB-4CA6-93B6-2D0DBF2F00FE")
-POSSIBLE_ANTS = ["d9:da:40:61:51:42", "CF:95:C4:15:A6:05", "c2:4d:ee:21:f3:6a"]
-# POSSIBLE_ANTS = ["CF:95:C4:15:A6:05"]
+# POSSIBLE_ANTS = ["d9:da:40:61:51:42", "CF:95:C4:15:A6:05", "c2:4d:ee:21:f3:6a"]
+POSSIBLE_ANTS = ["CF:95:C4:15:A6:05"]
 GROUP_CHAR = "5ad56076-88c1-4e11-bd31-7d4f1e99f32c"
 CONFIG_CHAR = "79606e8e-0b90-4ade-8c21-2a8fe1e64217"
 COLOR_CHAR = "c2a76563-3af7-4640-82be-1c841f228e6c"

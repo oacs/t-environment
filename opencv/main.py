@@ -159,6 +159,7 @@ class EnvProcess:
     pheromones: list
     run: bool
     thread: threading.Thread
+    config_zone: list
 
     def __init__(self, name, auto, focus, possible_colors=None, max_ants=2):
         if possible_colors is None:
@@ -174,6 +175,7 @@ class EnvProcess:
         self.started = False
         self.pheromones: List[Pheromone] = list()
         self.run = False
+        self.config_zone = None
 
     def start_thread(self, main_queue: Queue):
         self.thread = threading.Thread(target=self._gen, args=[main_queue])
@@ -196,9 +198,10 @@ class EnvProcess:
 
                 main_queue.put(output_message(
                     "Setting config zone (" + str(self.borders[1][0] + 150) + ", " + str(
-                        self.borders[1][1] + 250) + ")",
+                        self.borders[0][1] + 250) + ")",
                     "info"))
-                self.config_zone = [(0, 0), (self.borders[1][0] + 150, self.borders[1][1] + 250)]
+
+                self.config_zone = [(0, 0), (self.borders[1][0], self.borders[0][1])]
                 main_queue.put(output_message("Looking for ants", "info"))
                 frame = self.video.read()
                 cropped = crop_frame(frame, self.borders)
@@ -280,6 +283,11 @@ class EnvProcess:
         if len(self.borders) == 2:
             cv2.rectangle(
                 frame, self.borders[0], self.borders[1], 200)
+        return frame
+    def draw_config(self, frame):
+        if self.config_zone is not None and len(self.config_zone) == 2:
+            cv2.rectangle(
+                frame, self.config_zone[0], self.config_zone[1], 200)
         return frame
 
     def put_on_queue(self, frame):
