@@ -12,9 +12,11 @@ from cli import output_message
 from opencv.agent.agent import Agent, __remove_pheromone as remove_pheromone, \
     __upt_pheromone as upt_pheromone, Pheromone
 from opencv.ble.config import find_ant
+from opencv.box import Box
 from opencv.forms.borders import get_rect_borders, crop_frame
 from opencv.forms.color import GREEN_CONF, PURPLE_CONF, ColorFilter
 from opencv.forms.triangle import get_triangle, Triangle
+from opencv.wall import Wall
 
 
 class VideoCapture:
@@ -159,6 +161,8 @@ class EnvProcess:
     pheromones: list
     run: bool
     thread: threading.Thread
+    boxes: List[Box]
+    walls: List[Wall]
     config_zone: list
 
     def __init__(self, name, auto, focus, possible_colors=None, max_ants=2):
@@ -176,6 +180,8 @@ class EnvProcess:
         self.pheromones: List[Pheromone] = list()
         self.run = False
         self.config_zone = None
+        self.boxes = list()
+        self.walls = list()
 
     def start_thread(self, main_queue: Queue):
         self.thread = threading.Thread(target=self._gen, args=[main_queue])
@@ -301,7 +307,7 @@ class EnvProcess:
 
     def draw_xy(self, frame, x, y):
         if len(self.borders) == 2:
-            frame = cv2.putText(frame, f"( {x}, {y} )", (self.borders[0][0] - 50, 50), cv2.FONT_HERSHEY_COMPLEX, 0.5,
+            frame = cv2.putText(frame, f"( {x}, {y} )", (min(self.borders[0][0], self.borders[1][0]) - 50, 50), cv2.FONT_HERSHEY_COMPLEX, 0.5,
                                 (140, 25, 78))
         return frame
 

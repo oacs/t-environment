@@ -1,5 +1,9 @@
 import cv2
-from PySimpleGUI import Graph, Window, Text, Input, Tab, TabGroup, OK
+from PySimpleGUI import Graph, Window, Text, Input, Tab, TabGroup, OK, Column, Button
+
+from opencv.box import Box
+from opencv.wall import Wall
+from theme import PRIMARY
 
 from opencv.agent.agent import Agent, Pheromone
 from opencv.forms.borders import get_rect_borders
@@ -29,7 +33,7 @@ borders_graph = Graph((600, 450), (0, 450), (600, 0), key='BORDERS-GRAPH',
 graph_keys = ["MAIN-GRAPH", "GRAPH-MOUSE-MOTION", "-TAB-GROUP-"]
 
 
-def process_click(coord: tuple, env_process: EnvProcess, window: Window):
+def process_click(type: int, coord: tuple, env_process: EnvProcess, window: Window):
     x, y = coord
     ant: Agent
     x_offset = min(env_process.borders[1][0], env_process.borders[0][0]);
@@ -48,9 +52,18 @@ def process_click(coord: tuple, env_process: EnvProcess, window: Window):
                            env_process.borders[0][0]) and
             y_offset < y < max(env_process.borders[1][1],
                                env_process.borders[0][1])):
-        env_process.pheromones.append(
-            Pheromone(x - x_offset,
-                      y - y_offset, 5, b"0x12"))
+
+        if window["GRAPH-BOX"].metadata == "activated":
+            env_process.boxes.append(Box((x, y), len(env_process.boxes)))
+        elif window["GRAPH-WALL"].metadata == "activated":
+            if type == 1:
+                window.metadata["tempPos"] = (x, y)
+            else:
+                env_process.walls.append(Wall(window.metadata["tempPos"], (x, y), len(env_process.walls)))
+        else:
+            env_process.pheromones.append(
+                Pheromone(x - x_offset,
+                          y - y_offset, 5, b"0x12"))
 
 
 def graph_events(event: str, values: dict, window: Window, env_process: EnvProcess) -> None:
@@ -62,11 +75,33 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
         window (Window):
     """
 
+    if event == "GRAPH-BOX":
+        if window["GRAPH-BOX"].metadata == "activated":
+            window["GRAPH-BOX"].metadata = "unactivated"
+        else:
+            window["GRAPH-WALL"].metadata = "unactivated"
+            window["GRAPH-BOX"].metadata = "activated"
+            window["GRAPH-WALL"].update(image_filename="assets/img/brick-" + window["GRAPH-WALL"].metadata + ".png")
+
+        window["GRAPH-BOX"].update(image_filename="assets/img/box-" + window["GRAPH-BOX"].metadata + ".png")
+
+    if event == "GRAPH-WALL":
+        if window["GRAPH-WALL"].metadata == "activated":
+            window["GRAPH-WALL"].metadata = "unactivated"
+        else:
+            window["GRAPH-BOX"].metadata = "unactivated"
+            window["GRAPH-WALL"].metadata = "activated"
+            window["GRAPH-BOX"].update(image_filename="assets/img/box-" + window["GRAPH-BOX"].metadata + ".png")
+
+        window["GRAPH-WALL"].update(image_filename="assets/img/brick-" + window["GRAPH-WALL"].metadata + ".png")
     if values["-TAB-GROUP-"] == "-MAIN-TAB-":
         frame = env_process.read()
         if frame is not None:
             if event == 'MAIN-GRAPH':
-                process_click(values["MAIN-GRAPH"], env_process, window)
+                process_click(1, values["MAIN-GRAPH"], env_process, window)
+            elif event == 'MAIN-GRAPH+UP':
+                process_click(2, values["MAIN-GRAPH"], env_process, window)
+
             elif event == "GRAPH-MOUSE-MOTION":
                 window["MAIN-GRAPH"].metadata["x"] = window["MAIN-GRAPH"].user_bind_event.x
                 window["MAIN-GRAPH"].metadata["y"] = window["MAIN-GRAPH"].user_bind_event.y
@@ -76,6 +111,10 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
                 frame = env_process.draw_borders(frame)
                 frame = env_process.draw_config(frame)
                 frame = env_process.draw_pheromones(frame)
+                for box in env_process.boxes:
+                    frame = box.draw(frame)
+                for wall in env_process.walls:
+                    frame = wall.draw(frame)
                 for ant in env_process.ants:
                     frame = ant.draw_claw(frame, (min(env_process.borders[1][0], env_process.borders[0][0]),
                                                   min(env_process.borders[1][1], env_process.borders[0][1])))
@@ -121,15 +160,33 @@ def update_image(frame, window, graph):
 
 
 # The tab 1, 2, 3 layouts - what goes inside the tab
-tab_main_layout = [[main_graph]]
+tab_main_layout = [[main_graph, Column([
+    [
+        Button(button_text="", button_color=[PRIMARY, PRIMARY],
+               key="GRAPH-BOX",
+               image_filename="assets/img/box-unactivated.png",
+               image_size=[35, 35],
+               border_width=0, )
+    ],
+    [
+        Button(button_text="", button_color=[PRIMARY, PRIMARY],
+               key="GRAPH-WALL",
+               image_filename="assets/img/brick-unactivated.png",
+               image_size=[35, 35],
+               border_width=0, )
+    ]
+],
+    metadata="unactivated",
+    background_color=[PRIMARY])]]
 
 tab_colors_layout = [[colors_graph]]
 tab_border_layout = [[borders_graph]]
 
 # The TabgGroup layout - it must contain only Tabs
-tab_group_layout = [[Tab('Main', tab_main_layout, font='Courier 15', key='-MAIN-TAB-', pad=(0, 0)),
-                     Tab('Colors', tab_colors_layout, key='-COLORS-TAB-', pad=(0, 0)),
-                     Tab('Borders', tab_border_layout, key='-BORDERS-TAB-', pad=(0, 0)), ]]
+tab_group_layout = [
+    [Tab('Main', tab_main_layout, font='Courier 15', key='-MAIN-TAB-', pad=(0, 0), background_color=[PRIMARY]),
+     Tab('Colors', tab_colors_layout, key='-COLORS-TAB-', pad=(0, 0), background_color=[PRIMARY]),
+     Tab('Borders', tab_border_layout, key='-BORDERS-TAB-', pad=(0, 0), background_color=[PRIMARY]), ]]
 
 # The window layout - defines the entire window
-graph_tabs = TabGroup(tab_group_layout, enable_events=True, key='-TAB-GROUP-', )
+graph_tabs = TabGroup(tab_group_layout, enable_events=True, key='-TAB-GROUP-', background_color=[PRIMARY])
