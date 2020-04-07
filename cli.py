@@ -4,16 +4,16 @@ from actions.action import action_events
 from theme import WHITE, INFO, BLACK, DANGER
 
 cli = sg.Column([
-    [sg.Multiline("", disabled=True, key="cli-output", size=(20, 14), font=('Helvetica', 15, 'bold'),
+    [sg.Multiline("", disabled=True, key="cli-output", size=(30, 14), font=('Helvetica', 15, 'bold'),
                   background_color=BLACK, text_color=WHITE)],
     [sg.InputText("", disabled=False, key="cli-input", size=(80, 20)),
      sg.Button('enter-input', bind_return_key=True, visible=False)]
-], size=(600, 450))
+], size=(640, 450), key="CLI-COLUMN", pad=(0, 0), )
 
 cli_keys = ["cli-output", "cli-input", "enter-input", "env-message"]
 
 
-def cli_events(event: str, values: dict, window: sg.Window) -> None:
+def cli_events(event: str, values: dict, window: sg.Window, env_process) -> None:
     """
     Args:
         event:
@@ -24,11 +24,10 @@ def cli_events(event: str, values: dict, window: sg.Window) -> None:
     """
     cli_input: sg.InputText = window["cli-input"]
     cli_output: sg.Multiline = window["cli-output"]
-    print((event, values))
     if event == "enter-input":
         send_user_message(values["cli-input"], cli_output)
         cli_input.update("")
-        process_command(values["cli-input"], window)
+        process_command(values["cli-input"], window, env_process)
     if event == "env-message":
         if values["type"] == "info":
             send_info_message(values["message"], cli_output)
@@ -37,11 +36,11 @@ def cli_events(event: str, values: dict, window: sg.Window) -> None:
     return
 
 
-def process_command(command: str, window: sg.Window):
+def process_command(command: str, window: sg.Window, env_process):
     cli_output: sg.Multiline = window["cli-output"]
     if command == "start" or command == "play":
         if window["action_play_pause"].metadata["status"] == "pause":
-            action_events("action_play_pause", {}, window)
+            action_events("action_play_pause", {}, window,env_process)
             send_info_message("Successfully started", cli_output)
         else:
             send_error_message("Program already started", cli_output)

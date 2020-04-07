@@ -1,7 +1,7 @@
-from PySimpleGUI import Menu
+from PySimpleGUI import Menu, FileBrowse
 
 menu_def = [
-    ['File', ['Open', 'Save', 'Exit', ]],
+    ['File', ['z', 'Save', 'Exit', ]],
     ['Help', 'About...']
 ]
 

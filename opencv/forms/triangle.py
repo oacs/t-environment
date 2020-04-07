@@ -2,72 +2,11 @@
 import math  # 'math' needed for 'sqrt'
 import cv2
 from opencv.forms.color import PURPLE_CONF, Colors, GREEN_CONF
+from opencv.forms.utils import distance, between_pt, slope, offset_rect, delta_x_y, up_or_down, is_clockwise
 
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 width = 103
 height = 73
-
-
-def slope(pt1, pt2):
-    return (pt1[1] - pt2[1]) / (pt1[0] - pt2[0])
-
-
-def offset_rect(pt1, m):
-    """ Calc B of y = mx + B """
-    return pt1[1] - (m * pt1[0])
-
-
-def delta_x_y(m, b, pnt):
-    """ calc  dx for y and dy for dx on a rect """
-    try:
-        dx = (pnt[1] - b) / m
-    except ZeroDivisionError:
-        dx = pnt[1]
-    dy = ((m * pnt[0]) + b)
-    return dx, dy
-
-
-def up_or_down(dx, dy, pnt, m):
-    """  Check if one point is upper or down an rect """
-    # if(dx == 0 or dy == 0):
-    #     return 0
-    if m > 0:
-        if pnt[0] < dx and pnt[1] > dy:
-            return 1
-        elif pnt[0] > dx and pnt[1] < dy:
-            return -1
-    else:
-        if (pnt[0] < dx) and (pnt[1] < dy):
-            return -1
-        elif pnt[0] > dx and pnt[1] > dy:
-            return 1
-    print(dx, dy, pnt, m, pnt[0] < dx, pnt[1] < dy)
-    return 0
-
-
-def is_clockwise(m, orientation, top, pnt):
-    """ check in which direction is need it to turn """
-    if m < 0:
-        if top[0] < pnt[0] and top[1] > pnt[1]:
-            return -1 * orientation
-        elif top[0] > pnt[0] and top[1] < pnt[1]:
-            return 1 * orientation
-    else:
-        if top[0] < pnt[0] and top[1] < pnt[1]:
-            return -1 * orientation
-        elif top[0] > pnt[0] and top[1] > pnt[1]:
-            return 1 * orientation
-    return 1
-
-
-def distance(p0, p1):
-    """ Calculate the distance in px of two points"""
-    return math.sqrt((p0[0] - p1[0]) ** 2 + (p0[1] - p1[1]) ** 2)
-
-
-def between_pt(p0, p1):
-    """ Calculate the point between two points"""
-    return int((p0[0] + p1[0]) / 2), int((p0[1] + p1[1]) / 2)
 
 
 class Triangle:

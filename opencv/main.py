@@ -12,9 +12,11 @@ from cli import output_message
 from opencv.agent.agent import Agent, __remove_pheromone as remove_pheromone, \
     __upt_pheromone as upt_pheromone, Pheromone
 from opencv.ble.config import find_ant
+from opencv.box import Box
 from opencv.forms.borders import get_rect_borders, crop_frame
 from opencv.forms.color import GREEN_CONF, PURPLE_CONF, ColorFilter
 from opencv.forms.triangle import get_triangle, Triangle
+from opencv.wall import Wall
 
 
 class VideoCapture:
@@ -22,6 +24,9 @@ class VideoCapture:
 
     def __init__(self, name, auto, focus):
         self.cap = cv2.VideoCapture(name)
+        if self.cap.isOpened():
+            self.width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)  # float
+            self.height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float
         self.cap.set(cv2.CAP_PROP_AUTOFOCUS, auto)
         self.cap.set(cv2.CAP_PROP_FOCUS, focus)
         self.queue = Queue()
@@ -154,6 +159,11 @@ class EnvProcess:
     queue: Queue
     looking: bool
     pheromones: list
+    run: bool
+    thread: threading.Thread
+    boxes: List[Box]
+    walls: List[Wall]
+    config_zone: list
 
     def __init__(self, name, auto, focus, possible_colors=None, max_ants=2):
         if possible_colors is None:
@@ -168,44 +178,61 @@ class EnvProcess:
         self.looking = False
         self.started = False
         self.pheromones: List[Pheromone] = list()
+        self.run = False
+        self.config_zone = None
+        self.boxes = list()
+        self.walls = list()
 
     def start_thread(self, main_queue: Queue):
-        t = threading.Thread(target=self._gen, args=[main_queue])
+        self.thread = threading.Thread(target=self._gen, args=[main_queue])
         main_queue.put(output_message("Process started", "info"))
-        t.daemon = True
+        self.thread.daemon = True
         self.started = True
-        t.start()
+        self.thread.start()
 
     def _gen(self, main_queue):
         """ Main """
 
-        frame = self.video.read()
-        self.put_on_queue(frame)
-        main_queue.put(output_message("Searching for borders", "info"))
-        self.update_pheromones()
-        while len(self.borders) != 2:
-            self.borders = check_for_borders(self.video)
-
-        main_queue.put(output_message(
-            "Setting config zone (" + str(self.borders[1][0] + 150) + ", " + str(self.borders[1][1] + 250) + ")",
-            "info"))
-        self.config_zone = [(0, 0), (self.borders[1][0] + 150, self.borders[1][1] + 250)]
-        main_queue.put(output_message("Looking for ants", "info"))
-
         while True:
-            frame = self.video.read()
-            cropped = crop_frame(frame, self.borders)
+            if self.run:
+                frame = self.video.read()
+                self.put_on_queue(frame)
+                main_queue.put(output_message("Searching for borders", "info"))
+                self.update_pheromones()
+                while len(self.borders) != 2:
+                    self.borders = check_for_borders(self.video)[0]
 
-            if len(self.ants) != self.max_ants and not self.looking:
-                threading.Thread(target=self.look_for_new_ants, args=[cropped, main_queue]).start()
-            self.put_on_queue(frame)
+                main_queue.put(output_message(
+                    "Setting config zone (" + str(self.borders[1][0] + 150) + ", " + str(
+                        self.borders[0][1] + 250) + ")",
+                    "info"))
+
+                self.config_zone = [
+                    (0, 0), (self.borders[1][0], self.borders[0][1])]
+                main_queue.put(output_message("Looking for ants", "info"))
+                frame = self.video.read()
+                cropped = crop_frame(frame, self.borders)
+                if len(self.ants) != self.max_ants and not self.looking:
+                    self.looking = True
+                    threading.Timer(0, function=self.look_for_new_ants, args=[
+                                    cropped, main_queue]).start()
+                while True:
+                    frame = self.video.read()
+                    cropped = crop_frame(frame, self.borders)
+
+                    self.put_on_queue(frame)
+
+                    if not self.run:
+                        break
+            else:
+                frame = self.video.read()
+                self.put_on_queue(frame)
 
     def read(self):
         """ Return a frame """
         return self.queue.get()
 
     def look_for_new_ants(self, frame, main_queue):
-        self.looking = True
         # print("Looking")
         color: ColorFilter
         for color in self.possible_colors:
@@ -217,14 +244,24 @@ class EnvProcess:
                     new_ant: Agent
                     new_ant = find_ant(self.ants, color)
                     if new_ant is not None and new_ant.connected:
-                        main_queue.put(output_message("New agent added " + new_ant.color, "info"))
+                        main_queue.put(output_message(
+                            "New agent added " + new_ant.color, "info"))
                         self.ants.insert(0, new_ant)
-                        self.update_agent(new_ant, new_ant.color == "P", main_queue)
+                        self.update_agent(
+                            new_ant, new_ant.color == "P", main_queue)
                     else:
                         self.possible_colors.append(color)
-        self.looking = False
+        frame = self.video.read()
+        cropped = crop_frame(frame, self.borders)
+        if len(self.ants) != self.max_ants:
+            self.looking = True
+            threading.Timer(2, function=self.look_for_new_ants,
+                            args=[cropped, main_queue]).start()
+        else:
+            self.looking = False
 
     def update_agent(self, agent, following, main_queue):
+
         time_since_last_update = (time.time() - agent.last_update) * 1000
         frame = self.video.read()
         cropped = crop_frame(frame, self.borders)
@@ -236,28 +273,38 @@ class EnvProcess:
                     if dest.is_valid():
                         agent.destination = dest.center
                         agent.send_dist(dest.center)
-                agent.update(cropped, triangle,
-                             time_since_last_update, self.pheromones)
+                agent.update(triangle,
+                             time_since_last_update, self.pheromones, self.walls)
             pheromone = agent.pheromones.get_nowait()
             print(pheromone)
             if pheromone is not None:
                 self.pheromones.append(pheromone)
 
         except bluepy.btle.BTLEDisconnectError:
-            main_queue.put(output_message(f"Agent {agent.color} got disconnected. Trying to reconnect", "error"))
+            main_queue.put(output_message(
+                f"Agent {agent.color} got disconnected. Trying to reconnect", "error"))
             agent.con.disconnect()
         except bluepy.btle.BTLEGattError:
-            main_queue.put(output_message(f"Agent {agent.color} gatt error", "error"))
+            main_queue.put(output_message(
+                f"Agent {agent.color} gatt error", "error"))
         except bluepy.btle.BTLEInternalError:
-            main_queue.put(output_message(f"Agent {agent.color} BTLEInternalError", "error"))
+            main_queue.put(output_message(
+                f"Agent {agent.color} BTLEInternalError", "error"))
         except Empty:
             pass
-        threading.Timer(0.2, function=self.update_agent, args=[agent, following, main_queue]).start()
+        threading.Timer(0.2, function=self.update_agent, args=[
+                        agent, following, main_queue]).start()
 
     def draw_borders(self, frame):
         if len(self.borders) == 2:
             cv2.rectangle(
                 frame, self.borders[0], self.borders[1], 200)
+        return frame
+
+    def draw_config(self, frame):
+        if self.config_zone is not None and len(self.config_zone) == 2:
+            cv2.rectangle(
+                frame, self.config_zone[0], self.config_zone[1], 200)
         return frame
 
     def put_on_queue(self, frame):
@@ -271,13 +318,14 @@ class EnvProcess:
 
     def draw_xy(self, frame, x, y):
         if len(self.borders) == 2:
-            frame = cv2.putText(frame, f"( {x}, {y} )", (self.borders[0][0] - 50, 50), cv2.FONT_HERSHEY_COMPLEX, 0.5,
+            frame = cv2.putText(frame, f"( {x}, {y} )", (min(self.borders[0][0], self.borders[1][0]) - 50, 50), cv2.FONT_HERSHEY_COMPLEX, 0.5,
                                 (140, 25, 78))
         return frame
 
     def draw_pheromones(self, frame):
         for pheromone in self.pheromones:
-            frame = cv2.circle(frame, (pheromone.x + self.borders[1][0], pheromone.y + self.borders[1][1]),
+            frame = cv2.circle(frame, (pheromone.x + min(self.borders[1][0], self.borders[0][0]),
+                                       pheromone.y + min(self.borders[1][1], self.borders[0][1])),
                                pheromone.intense, (255, 140, 20))
 
         return frame
@@ -286,4 +334,4 @@ class EnvProcess:
         self.pheromones = list(map(upt_pheromone, self.pheromones))
         self.pheromones = list(filter(remove_pheromone, self.pheromones))
 
-        threading.Timer(1, function=self.update_pheromones).start()
+        threading.Timer(60, function=self.update_pheromones).start()

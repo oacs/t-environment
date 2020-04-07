@@ -4,6 +4,8 @@ import math
 import queue
 import sys
 import time
+from collections import OrderedDict
+
 from enum import Enum
 from struct import unpack, pack
 from typing import List
@@ -14,7 +16,8 @@ import numpy as np
 from bluepy.btle import Peripheral, BTLEException
 
 from opencv.forms.triangle import Triangle, distance
-from opencv.forms.utils import FONT, rotate_polygon
+from opencv.forms.utils import FONT, rotate_polygon, cart2pol, pol2cart
+from opencv.wall import Wall
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 LOGGER = logging.getLogger("agent")
@@ -31,6 +34,7 @@ class EnumChars(Enum):
     debug = "645e1252-55dd-4604-8d35-add29319725b"
     com = "a6f2eee3-d71e-4e77-a9fa-66fb946c4e96"
     dest = "403dc772-b887-44bd-9105-1215e7886112"
+    pheromones = "5b3afbbc-c715-4d31-942d-e4d63bf04eae"
 
 
 class Characteristics:
@@ -48,6 +52,7 @@ class Characteristics:
     def __init__(self, chars):
         self.pheromones = -1
         for char in chars:
+            print(char.uuid, char.getHandle())
             if char.uuid == EnumChars.position.value:
                 self.position = char.getHandle()
                 continue
@@ -68,6 +73,9 @@ class Characteristics:
                 continue
             if char.uuid == EnumChars.dest.value:
                 self.dest = char.getHandle()
+                continue
+            if char.uuid == EnumChars.pheromones.value:
+                self.pheromones = char.getHandle()
                 continue
 
 
@@ -109,6 +117,7 @@ class Agent:
     speed = 0
     speed_rotation = 0
     __configured: bool
+    sensor_lines: List[tuple]
 
     def __init__(self, address, ):
         # self.radius is an instance variable
@@ -121,8 +130,11 @@ class Agent:
             self.color = self.con.readCharacteristic(self.chars.color).decode()
             self.set_config()
         self.sending = Updatable()
+        # self.sending.pheromone = True
         self.triangle = Triangle()
+        self.rotation = 360
         self.pheromones = queue.Queue()
+        self.sensor_lines = list()
 
     def connect(self):
         """ Connect to to ant and se the config """
@@ -147,7 +159,6 @@ class Agent:
                 LOGGER.debug("Found chars:")
                 # LOGGER.debug(chars)
         chars = Characteristics(chars_list)
-
         self.connected = True
         return chars
 
@@ -173,12 +184,14 @@ class Agent:
 
     def send_rotation(self):
         """ Convert the rotation(float) to byte array and send via BLE """
-        if self.sending.rotation:
-            self.rotation = self.triangle.calc_rotation(
+        if self.destination:
+            new_rotation = self.triangle.calc_rotation(
                 self.destination)
-            b_rotation = pack("ff", self.rotation, 0)
-            self.con.writeCharacteristic(
-                self.chars.rotation, b_rotation, withResponse=True)
+            if self.rotation == 360 or abs(self.rotation - new_rotation) > 3:
+                self.rotation = new_rotation
+                b_rotation = pack("ff", self.rotation, 0)
+                self.con.writeCharacteristic(
+                    self.chars.rotation, b_rotation, withResponse=True)
 
     def send_dist(self, dest):
         """ Convert the dist(tuple) to byte array and send via BLE """
@@ -187,21 +200,61 @@ class Agent:
         self.con.writeCharacteristic(
             self.chars.dest, b_dest, withResponse=True)
 
+    def distance_sensor(self, walls: List[Wall]):
+        temp_sensor_lines = list()
+        start_object = None
+        end_object = None
+        self.sensor_lines.clear()
+        for angle in range(0, 360, 15):
+            cart_pos = pol2cart(angle, 50)
+            cart_pos = (int(max(0, cart_pos[0] + self.xy[0])), int(max(cart_pos[1] + self.xy[1], 0)))
+            temp_intercepts = False
+            for wall in walls:
+                intercepts, interception = wall.get_intersection([cart_pos, self.xy])
+                if intercepts:
+                    if temp_intercepts:
+                        if distance(cart_pos, self.xy) > distance(interception, self.xy):
+                            cart_pos = interception
+                    else:
+                        cart_pos = interception
+                        temp_intercepts = True
+
+            if temp_intercepts:
+                if start_object is None:
+                    start_object = cart_pos
+                else:
+                    end_object = cart_pos
+            else:
+                if start_object is not None:
+                    self.sensor_lines.append((start_object, "red"))
+                    if end_object is not None:
+                        self.sensor_lines.append((end_object, "red"))
+                        end_object = None
+                    start_object = None
+                self.sensor_lines.append((cart_pos, "blue"))
+
     def send_pheromones(self, pheromones):
-        b_pheromones = bytearray()
-        length = min(29, len(pheromones))
-        b_pheromones.append(pack("i", length)[0][0:1])
+        b_pheromones = b''
+        pheromones = list(OrderedDict.fromkeys(
+            pheromones))  # remove duplicates
+        length = min(20, len(pheromones))
+        b_length = pack("i", length)
+        b_length = b_length[0:1]
+        b_pheromones += b_length
         for i in range(0, length):
-            temp_x = pack("i", pheromones[i].x)[0]
-            temp_y = pack("i", pheromones[i].y)[0]
+            temp_x = pack("i", pheromones[i].x)
+            temp_y = pack("i", pheromones[i].y)
             temp_x = temp_x[0:3]
             temp_y = temp_y[0:3]
-            b_pheromones.append(temp_x)
-            b_pheromones.append(temp_y)
+            b_pheromones += temp_x
+            b_pheromones += temp_y
+            print(pheromones[i].x, pheromones[i].y)
 
         print(b_pheromones)
         self.con.writeCharacteristic(
             self.chars.pheromones, b_pheromones, withResponse=True)
+        debug = self.con.readCharacteristic(self.chars.debug)
+        print(unpack("i", debug))
 
     def send_speed_base(self, speed, speed_type: str):
         """ Convert the dist(tuple) to byte array and send via BLE """
@@ -210,7 +263,7 @@ class Agent:
         self.con.writeCharacteristic(
             self.chars.config, ("s" + speed_type).encode() + b_dest, withResponse=True)
 
-    def update(self, triangle, time_since_last_update, pheromones):
+    def update(self, triangle, time_since_last_update, pheromones, walls: Wall):
         """ Update the sensors of the agent via BLE"""
         if triangle.is_valid() and self.triangle.is_valid():
             self.speed_rotation = distance(
@@ -218,6 +271,7 @@ class Agent:
         self.triangle = triangle
 
         # Calc speed
+        prev_speed = self.speed
         self.speed = distance(
             self.triangle.center, self.xy) / time_since_last_update
 
@@ -225,14 +279,22 @@ class Agent:
         self.last_update = time.time()
 
         # update position
-        self.xy = self.triangle.center
+        prev_position = self.xy
+        new_position = self.triangle.center
 
         if self.sending.pheromone is not "none":
-            self.send_pheromones(get_close_pheromones(100, self.xy, pheromones))
+            self.send_pheromones(get_close_pheromones(
+                12000, self.xy, pheromones))
+            self.sending.pheromone = "none"
 
         self.read_message()
+        if abs(distance(prev_position, new_position)) > 6:
+            self.xy = self.triangle.center
+            self.send_pos()
+            self.distance_sensor(walls)
+        else:
+            self.xy = prev_position
         self.send_rotation()
-        self.send_pos()
 
     def read_message(self):
         """ Check the com char of the agent and process the msg """
@@ -249,15 +311,32 @@ class Agent:
 
         # print(message[0], b'\x11', message, message[0] == b'\x11')
         if message[0] == 17:
-            intense = unpack(">i", message[2:6])[0]
+            intense = unpack("i", message[2:6])[0]
             print(intense, self.xy)
-            self.pheromones.put(Pheromone(self.xy[0], self.xy[1], intense, message[1]))
+            self.pheromones.put(
+                Pheromone(self.xy[0], self.xy[1], intense, message[1]))
         if message[0] == 18:
-            self.sending.pheromones = get_pheromone_type(message[1])
+            self.sending.pheromone = get_pheromone_type(message[1])
 
         self.con.writeCharacteristic(
             self.chars.com, "0".encode(), withResponse=True)
         return
+
+    def draw_lines(self, frame, offset=(0, 0)):
+        """ Draw the destination with a circle and a line from top to pnt """
+        for (line, color) in self.sensor_lines:
+            if line[0] != -1 and self.triangle.is_valid():
+                if color is "red":
+                    show_color = (20, 20, 200)
+                else:
+                    show_color = (200, 150, 50)
+                cv2.line(
+                    frame,
+                    tuple(map(sum, zip(self.triangle.center, offset))),
+                    tuple(map(sum, zip(line, offset))),
+                    show_color,
+                    2
+                )
 
     def draw_dest(self, frame, offset=(0, 0)):
         """ Draw the destination with a circle and a line from top to pnt """
@@ -266,7 +345,8 @@ class Agent:
                      tuple(map(sum, zip(self.triangle.top, offset))), (200, 150, 50), 2)
             cv2.line(frame, tuple(map(sum, zip(self.triangle.top, offset))),
                      tuple(map(sum, zip(self.destination, offset))), (200, 150, 50), 2)
-            cv2.circle(frame, tuple(map(sum, zip(self.destination, offset))), 5, 200, 1)
+            cv2.circle(frame, tuple(
+                map(sum, zip(self.destination, offset))), 5, 200, 1)
 
     def draw_distance(self, frame, offset=(0, 0)):
         """ Draw the distance with a circle and a line from top to pnt """
@@ -274,7 +354,8 @@ class Agent:
             cv2.line(frame, tuple(map(sum, zip(self.triangle.center, offset))),
                      tuple(map(sum, zip(self.triangle.top, offset))), (200, 150, 50), 2)
             cv2.putText(frame,
-                        ('%.2f' % (distance(self.triangle.center, self.destination) / 5)) + " cm", self.destination,
+                        ('%.2f' % (distance(self.triangle.center,
+                                            self.destination) / 5)) + " cm", self.destination,
                         FONT, 1,
                         255)
 
@@ -286,7 +367,8 @@ class Agent:
             cv2.line(frame, tuple(map(sum, zip(self.triangle.center, offset))),
                      tuple(map(sum, zip(self.triangle.top, offset))), (200, 150, 50), 2)
             cv2.putText(frame,
-                        ('%.2f' % self.rotation) + " C*", self.destination, FONT, 1,
+                        ('%.2f' % self.rotation) +
+                        " C*", self.destination, FONT, 1,
                         255)
 
     def draw_claw(self, frame: object, offset: tuple = (0, 0)) -> object:
@@ -313,7 +395,7 @@ class Agent:
 
 
 def get_pheromone_type(pheromone_type):
-    if pheromone_type == b"0x12":
+    if pheromone_type == 18:
         return "searching"
     elif pheromone_type == b"0x00":
         return "none"
@@ -324,6 +406,7 @@ class Pheromone:
     y: int
     intense: int
     type: str
+    
 
     def __init__(self, x, y, intense, pheromone_type):
         self.x = x
@@ -331,9 +414,18 @@ class Pheromone:
         self.intense = intense
         self.type = get_pheromone_type(pheromone_type)
 
+    def __eq__(self, other):
+        return self.x == other.x \
+               and self.y == other.y
+
+    def __hash__(self):
+        return hash(('x', self.x,
+                     'y', self.y))
+
 
 def get_close_pheromones(dist: int, pos: tuple, pheromones: List[Pheromone]):
-    close_pheromones = list(filter(lambda pheromone: distance(pos, (pheromone.x, pheromone.y)) < dist, pheromones))
+    close_pheromones = list(filter(lambda pheromone: distance(
+        pos, (pheromone.x, pheromone.y)) < dist, pheromones))
     return close_pheromones
 
 
