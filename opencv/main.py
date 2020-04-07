@@ -207,13 +207,15 @@ class EnvProcess:
                         self.borders[0][1] + 250) + ")",
                     "info"))
 
-                self.config_zone = [(0, 0), (self.borders[1][0], self.borders[0][1])]
+                self.config_zone = [
+                    (0, 0), (self.borders[1][0], self.borders[0][1])]
                 main_queue.put(output_message("Looking for ants", "info"))
                 frame = self.video.read()
                 cropped = crop_frame(frame, self.borders)
                 if len(self.ants) != self.max_ants and not self.looking:
                     self.looking = True
-                    threading.Timer(0, function=self.look_for_new_ants, args=[cropped, main_queue]).start()
+                    threading.Timer(0, function=self.look_for_new_ants, args=[
+                                    cropped, main_queue]).start()
                 while True:
                     frame = self.video.read()
                     cropped = crop_frame(frame, self.borders)
@@ -242,20 +244,24 @@ class EnvProcess:
                     new_ant: Agent
                     new_ant = find_ant(self.ants, color)
                     if new_ant is not None and new_ant.connected:
-                        main_queue.put(output_message("New agent added " + new_ant.color, "info"))
+                        main_queue.put(output_message(
+                            "New agent added " + new_ant.color, "info"))
                         self.ants.insert(0, new_ant)
-                        self.update_agent(new_ant, new_ant.color == "P", main_queue)
+                        self.update_agent(
+                            new_ant, new_ant.color == "P", main_queue)
                     else:
                         self.possible_colors.append(color)
         frame = self.video.read()
         cropped = crop_frame(frame, self.borders)
         if len(self.ants) != self.max_ants:
             self.looking = True
-            threading.Timer(2, function=self.look_for_new_ants, args=[cropped, main_queue]).start()
+            threading.Timer(2, function=self.look_for_new_ants,
+                            args=[cropped, main_queue]).start()
         else:
             self.looking = False
 
     def update_agent(self, agent, following, main_queue):
+
         time_since_last_update = (time.time() - agent.last_update) * 1000
         frame = self.video.read()
         cropped = crop_frame(frame, self.borders)
@@ -268,28 +274,33 @@ class EnvProcess:
                         agent.destination = dest.center
                         agent.send_dist(dest.center)
                 agent.update(triangle,
-                             time_since_last_update, self.pheromones)
+                             time_since_last_update, self.pheromones, self.walls)
             pheromone = agent.pheromones.get_nowait()
             print(pheromone)
             if pheromone is not None:
                 self.pheromones.append(pheromone)
 
         except bluepy.btle.BTLEDisconnectError:
-            main_queue.put(output_message(f"Agent {agent.color} got disconnected. Trying to reconnect", "error"))
+            main_queue.put(output_message(
+                f"Agent {agent.color} got disconnected. Trying to reconnect", "error"))
             agent.con.disconnect()
         except bluepy.btle.BTLEGattError:
-            main_queue.put(output_message(f"Agent {agent.color} gatt error", "error"))
+            main_queue.put(output_message(
+                f"Agent {agent.color} gatt error", "error"))
         except bluepy.btle.BTLEInternalError:
-            main_queue.put(output_message(f"Agent {agent.color} BTLEInternalError", "error"))
+            main_queue.put(output_message(
+                f"Agent {agent.color} BTLEInternalError", "error"))
         except Empty:
             pass
-        threading.Timer(0.2, function=self.update_agent, args=[agent, following, main_queue]).start()
+        threading.Timer(0.2, function=self.update_agent, args=[
+                        agent, following, main_queue]).start()
 
     def draw_borders(self, frame):
         if len(self.borders) == 2:
             cv2.rectangle(
                 frame, self.borders[0], self.borders[1], 200)
         return frame
+
     def draw_config(self, frame):
         if self.config_zone is not None and len(self.config_zone) == 2:
             cv2.rectangle(

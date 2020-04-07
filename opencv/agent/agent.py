@@ -16,7 +16,8 @@ import numpy as np
 from bluepy.btle import Peripheral, BTLEException
 
 from opencv.forms.triangle import Triangle, distance
-from opencv.forms.utils import FONT, rotate_polygon
+from opencv.forms.utils import FONT, rotate_polygon, cart2pol, pol2cart
+from opencv.wall import Wall
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 LOGGER = logging.getLogger("agent")
@@ -116,6 +117,7 @@ class Agent:
     speed = 0
     speed_rotation = 0
     __configured: bool
+    sensor_lines: List[tuple]
 
     def __init__(self, address, ):
         # self.radius is an instance variable
@@ -132,6 +134,7 @@ class Agent:
         self.triangle = Triangle()
         self.rotation = 360
         self.pheromones = queue.Queue()
+        self.sensor_lines = list()
 
     def connect(self):
         """ Connect to to ant and se the config """
@@ -184,7 +187,7 @@ class Agent:
         if self.destination:
             new_rotation = self.triangle.calc_rotation(
                 self.destination)
-            if self.rotation == 360 or abs(self.rotation - new_rotation) > 3 :
+            if self.rotation == 360 or abs(self.rotation - new_rotation) > 3:
                 self.rotation = new_rotation
                 b_rotation = pack("ff", self.rotation, 0)
                 self.con.writeCharacteristic(
@@ -196,6 +199,39 @@ class Agent:
             "ii", dest[0], dest[1])
         self.con.writeCharacteristic(
             self.chars.dest, b_dest, withResponse=True)
+
+    def distance_sensor(self, walls: List[Wall]):
+        temp_sensor_lines = list()
+        start_object = None
+        end_object = None
+        self.sensor_lines.clear()
+        for angle in range(0, 360, 15):
+            cart_pos = pol2cart(angle, 50)
+            cart_pos = (int(max(0, cart_pos[0] + self.xy[0])), int(max(cart_pos[1] + self.xy[1], 0)))
+            temp_intercepts = False
+            for wall in walls:
+                intercepts, interception = wall.get_intersection([cart_pos, self.xy])
+                if intercepts:
+                    if temp_intercepts:
+                        if distance(cart_pos, self.xy) > distance(interception, self.xy):
+                            cart_pos = interception
+                    else:
+                        cart_pos = interception
+                        temp_intercepts = True
+
+            if temp_intercepts:
+                if start_object is None:
+                    start_object = cart_pos
+                else:
+                    end_object = cart_pos
+            else:
+                if start_object is not None:
+                    self.sensor_lines.append((start_object, "red"))
+                    if end_object is not None:
+                        self.sensor_lines.append((end_object, "red"))
+                        end_object = None
+                    start_object = None
+                self.sensor_lines.append((cart_pos, "blue"))
 
     def send_pheromones(self, pheromones):
         b_pheromones = b''
@@ -227,7 +263,7 @@ class Agent:
         self.con.writeCharacteristic(
             self.chars.config, ("s" + speed_type).encode() + b_dest, withResponse=True)
 
-    def update(self, triangle, time_since_last_update, pheromones):
+    def update(self, triangle, time_since_last_update, pheromones, walls: Wall):
         """ Update the sensors of the agent via BLE"""
         if triangle.is_valid() and self.triangle.is_valid():
             self.speed_rotation = distance(
@@ -255,6 +291,7 @@ class Agent:
         if abs(distance(prev_position, new_position)) > 6:
             self.xy = self.triangle.center
             self.send_pos()
+            self.distance_sensor(walls)
         else:
             self.xy = prev_position
         self.send_rotation()
@@ -284,6 +321,22 @@ class Agent:
         self.con.writeCharacteristic(
             self.chars.com, "0".encode(), withResponse=True)
         return
+
+    def draw_lines(self, frame, offset=(0, 0)):
+        """ Draw the destination with a circle and a line from top to pnt """
+        for (line, color) in self.sensor_lines:
+            if line[0] != -1 and self.triangle.is_valid():
+                if color is "red":
+                    show_color = (20, 20, 200)
+                else:
+                    show_color = (200, 150, 50)
+                cv2.line(
+                    frame,
+                    tuple(map(sum, zip(self.triangle.center, offset))),
+                    tuple(map(sum, zip(line, offset))),
+                    show_color,
+                    2
+                )
 
     def draw_dest(self, frame, offset=(0, 0)):
         """ Draw the destination with a circle and a line from top to pnt """
@@ -353,6 +406,7 @@ class Pheromone:
     y: int
     intense: int
     type: str
+    
 
     def __init__(self, x, y, intense, pheromone_type):
         self.x = x
@@ -362,7 +416,7 @@ class Pheromone:
 
     def __eq__(self, other):
         return self.x == other.x \
-            and self.y == other.y
+               and self.y == other.y
 
     def __hash__(self):
         return hash(('x', self.x,
