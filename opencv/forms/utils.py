@@ -63,7 +63,8 @@ def line_line(points: List[tuple]):
     # Ya = A1 * Xa + b1
     # Ya = A2 * Xa + b2
     # A1 * Xa + b1 = A2 * Xa + b2
-    Xa = (b2 - b1) / (A1 - A2)  # Once again, pay attention to not dividing by zero
+    # Once again, pay attention to not dividing by zero
+    Xa = (b2 - b1) / (A1 - A2)
 
     if ((Xa < max(min(X1, X2), min(X3, X4))) or
             (Xa > min(max(X1, X2), max(X3, X4)))):
@@ -78,10 +79,14 @@ def line_line(points: List[tuple]):
 def line_rect(line_points, rect_points: List[tuple]):
     # check if the line has hit any of the rectangle's sides
     # uses the Line/Line function below
-    hit_left, pnt_left = line_line([line_points[0], line_points[1], rect_points[0], rect_points[1]])
-    hit_right, pnt_right = line_line([line_points[0], line_points[1], rect_points[3], rect_points[2]])
-    hit_top, pnt_top = line_line([line_points[0], line_points[1], rect_points[0], rect_points[3]])
-    hit_bottom, pnt_bottom = line_line([line_points[0], line_points[1], rect_points[1], rect_points[2]])
+    hit_left, pnt_left = line_line(
+        [line_points[0], line_points[1], rect_points[0], rect_points[1]])
+    hit_right, pnt_right = line_line(
+        [line_points[0], line_points[1], rect_points[3], rect_points[2]])
+    hit_top, pnt_top = line_line(
+        [line_points[0], line_points[1], rect_points[0], rect_points[3]])
+    hit_bottom, pnt_bottom = line_line(
+        [line_points[0], line_points[1], rect_points[1], rect_points[2]])
 
     possible_point = None
     if hit_left:
@@ -174,7 +179,7 @@ def up_or_down(dx, dy, pnt, m):
             return -1
         elif pnt[0] > dx and pnt[1] > dy:
             return 1
-    print(dx, dy, pnt, m, pnt[0] < dx, pnt[1] < dy)
+    # print(dx, dy, pnt, m, pnt[0] < dx, pnt[1] < dy)
     return 0
 
 
@@ -257,14 +262,15 @@ class Segment:
         if ds == 0 or dt == 0:
             return False, (-1, -1)
 
-        s = (-s1_y * (self.start_point.x - segment.start_point.x) + s1_x * (self.start_point.y - segment.start_point.y)) / ds
-        t = (s2_x * (self.start_point.y - segment.start_point.y) - s2_y * (self.start_point.x - segment.start_point.x)) / dt
+        s = (-s1_y * (self.start_point.x - segment.start_point.x) +
+             s1_x * (self.start_point.y - segment.start_point.y)) / ds
+        t = (s2_x * (self.start_point.y - segment.start_point.y) -
+             s2_y * (self.start_point.x - segment.start_point.x)) / dt
 
         if 0 <= s <= 1 and 0 <= t <= 1:
             i_x = self.start_point.x + (t * s1_x)
             i_y = self.start_point.y + (t * s1_y)
-            return True, (i_x, i_y);
+            return True, (i_x, i_y)
 
         else:
             return False, (-1, -1)
-

@@ -239,7 +239,7 @@ class EnvProcess:
             triangle = get_triangle(frame, color.color.value)
             if triangle.is_valid():
                 if is_inside_rect(triangle.center, self.config_zone):
-                    print(triangle.position)
+                    # print(triangle.position)
                     self.possible_colors.remove(color)
                     new_ant: Agent
                     new_ant = find_ant(self.ants, color)
@@ -276,7 +276,7 @@ class EnvProcess:
                 agent.update(triangle,
                              time_since_last_update, self.pheromones, self.walls)
             pheromone = agent.pheromones.get_nowait()
-            print(pheromone)
+            # print(pheromone)
             if pheromone is not None:
                 self.pheromones.append(pheromone)
 

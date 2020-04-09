@@ -11,6 +11,7 @@ from struct import unpack, pack
 from typing import List
 from uuid import UUID
 
+import bluepy
 import cv2
 import numpy as np
 from bluepy.btle import Peripheral, BTLEException
@@ -35,6 +36,7 @@ class EnumChars(Enum):
     com = "a6f2eee3-d71e-4e77-a9fa-66fb946c4e96"
     dest = "403dc772-b887-44bd-9105-1215e7886112"
     pheromones = "5b3afbbc-c715-4d31-942d-e4d63bf04eae"
+    distance = "f17ca917-e5af-4f0f-afab-0243fb59193c"
 
 
 class Characteristics:
@@ -52,7 +54,6 @@ class Characteristics:
     def __init__(self, chars):
         self.pheromones = -1
         for char in chars:
-            print(char.uuid, char.getHandle())
             if char.uuid == EnumChars.position.value:
                 self.position = char.getHandle()
                 continue
@@ -76,6 +77,9 @@ class Characteristics:
                 continue
             if char.uuid == EnumChars.pheromones.value:
                 self.pheromones = char.getHandle()
+                continue
+            if char.uuid == EnumChars.distance.value:
+                self.distance = char.getHandle()
                 continue
 
 
@@ -118,6 +122,7 @@ class Agent:
     speed_rotation = 0
     __configured: bool
     sensor_lines: List[tuple]
+    collide: bool
 
     def __init__(self, address, ):
         # self.radius is an instance variable
@@ -177,10 +182,13 @@ class Agent:
 
     def send_pos(self):
         """ Convert the position(tuple) to byte array and send via BLE """
-        b_position = pack(
-            "ii", self.triangle.position[0], self.triangle.position[1])
-        self.con.writeCharacteristic(
-            self.chars.position, b_position, withResponse=True)
+        try:
+            b_position = pack(
+                "ii", self.triangle.position[0], self.triangle.position[1])
+            self.con.writeCharacteristic(
+                self.chars.position, b_position, withResponse=True)
+        except bluepy.btle.BTLEGattError:
+            pass
 
     def send_rotation(self):
         """ Convert the rotation(float) to byte array and send via BLE """
@@ -204,6 +212,8 @@ class Agent:
         temp_sensor_lines = list()
         start_object = None
         end_object = None
+        self.collide = False
+
         self.sensor_lines.clear()
         for angle in range(0, 360, 15):
             cart_pos = pol2cart(angle, 50)
@@ -227,6 +237,7 @@ class Agent:
             else:
                 if start_object is not None:
                     self.sensor_lines.append((start_object, "red"))
+                    self.collide = True
                     if end_object is not None:
                         self.sensor_lines.append((end_object, "red"))
                         end_object = None
@@ -248,13 +259,12 @@ class Agent:
             temp_y = temp_y[0:3]
             b_pheromones += temp_x
             b_pheromones += temp_y
-            print(pheromones[i].x, pheromones[i].y)
 
-        print(b_pheromones)
+
         self.con.writeCharacteristic(
             self.chars.pheromones, b_pheromones, withResponse=True)
-        debug = self.con.readCharacteristic(self.chars.debug)
-        print(unpack("i", debug))
+        # debug = self.con.readCharacteristic(self.chars.debug)
+        # print(unpack("i", debug))
 
     def send_speed_base(self, speed, speed_type: str):
         """ Convert the dist(tuple) to byte array and send via BLE """
@@ -292,6 +302,8 @@ class Agent:
             self.xy = self.triangle.center
             self.send_pos()
             self.distance_sensor(walls)
+            if self.collide:
+                self.send_distance_lines()
         else:
             self.xy = prev_position
         self.send_rotation()
@@ -312,7 +324,6 @@ class Agent:
         # print(message[0], b'\x11', message, message[0] == b'\x11')
         if message[0] == 17:
             intense = unpack("i", message[2:6])[0]
-            print(intense, self.xy)
             self.pheromones.put(
                 Pheromone(self.xy[0], self.xy[1], intense, message[1]))
         if message[0] == 18:
@@ -393,6 +404,27 @@ class Agent:
             cv2.fillPoly(frame, [b], (128, 0, 128))
         return frame
 
+    def send_distance_lines(self):
+        b_distance_lines = b''
+        b_length, length = calc_bytes_of_length(self.sensor_lines, 23)
+        b_distance_lines += b_length
+        for i in range(0, length):
+            ((temp_x, temp_y), intercepts) = self.sensor_lines[i]
+            temp_x = pack("i", temp_x)
+            temp_y = pack("i", temp_y)
+            temp_x = temp_x[0:3]
+            temp_y = temp_y[0:3]
+            b_distance_lines += temp_x
+            b_distance_lines += temp_y
+
+            if intercepts == "red":
+                b_distance_lines += b'0x01'
+            else:
+                b_distance_lines += b'0x00'
+        self.con.writeCharacteristic(
+            self.chars.distance, b_distance_lines, withResponse=True)
+        pass
+
 
 def get_pheromone_type(pheromone_type):
     if pheromone_type == 18:
@@ -401,12 +433,18 @@ def get_pheromone_type(pheromone_type):
         return "none"
 
 
+def calc_bytes_of_length(array: list, min_length=20):
+    length = min(min_length, len(array))
+    b_length = pack("i", length)
+    b_length = b_length[0:2]
+    return b_length, length
+
+
 class Pheromone:
     x: int
     y: int
     intense: int
     type: str
-    
 
     def __init__(self, x, y, intense, pheromone_type):
         self.x = x
