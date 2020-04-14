@@ -22,7 +22,13 @@ def approx_xy(approx, area: object, res: object) -> tuple:
 
 
 def cart2pol(x, y):
-    theta = np.arctan2(y, x)
+    if x == 0:
+        if y > 0:
+            theta = 90
+        else:
+            theta = -90
+    else:
+        theta = np.arctan2(y, x)
     rho = np.hypot(x, y)
     return theta, rho
 
