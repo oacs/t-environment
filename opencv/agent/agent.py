@@ -57,30 +57,33 @@ class Characteristics:
             if char.uuid == EnumChars.position.value:
                 self.position = char.getHandle()
                 continue
-            if char.uuid == EnumChars.config.value:
+            elif char.uuid == EnumChars.config.value:
                 self.config = char.getHandle()
                 continue
-            if char.uuid == EnumChars.color.value:
+            elif char.uuid == EnumChars.color.value:
                 self.color = char.getHandle()
                 continue
-            if char.uuid == EnumChars.debug.value:
+            elif char.uuid == EnumChars.debug.value:
                 self.debug = char.getHandle()
                 continue
-            if char.uuid == EnumChars.com.value:
+            elif char.uuid == EnumChars.com.value:
                 self.com = char.getHandle()
                 continue
-            if char.uuid == EnumChars.rotation.value:
+            elif char.uuid == EnumChars.rotation.value:
                 self.rotation = char.getHandle()
                 continue
-            if char.uuid == EnumChars.dest.value:
+            elif char.uuid == EnumChars.dest.value:
                 self.dest = char.getHandle()
                 continue
-            if char.uuid == EnumChars.pheromones.value:
+            elif char.uuid == EnumChars.pheromones.value:
                 self.pheromones = char.getHandle()
                 continue
-            if char.uuid == EnumChars.distance.value:
+            elif char.uuid == EnumChars.distance.value:
                 self.distance = char.getHandle()
                 continue
+            else:
+                print("Unknow char", char.uuid)
+        pass
 
 
 def rotate_2d(pts, cnt, ang=math.pi / 4):
@@ -188,6 +191,10 @@ class Agent:
             self.con.writeCharacteristic(
                 self.chars.position, b_position, withResponse=True)
         except bluepy.btle.BTLEGattError:
+            print("ERROR on GAT sending pos")
+        except bluepy.btle.BTLEException as err:
+            print("ERROR on sending pos"
+                  "", err, err.message, err.emsg)
             pass
 
     def send_rotation(self):
@@ -216,11 +223,14 @@ class Agent:
 
         self.sensor_lines.clear()
         for angle in range(0, 360, 15):
-            cart_pos = pol2cart(angle, 50)
-            cart_pos = (int(max(0, cart_pos[0] + self.xy[0])), int(max(cart_pos[1] + self.xy[1], 0)))
+
+            cart_pos = pol2cart(angle, 150)
+            cart_pos = (
+                int(max(0, cart_pos[0] + self.xy[0])), int(max(cart_pos[1] + self.xy[1], 0)))
             temp_intercepts = False
             for wall in walls:
-                intercepts, interception = wall.get_intersection([cart_pos, self.xy])
+                intercepts, interception = wall.get_intersection(
+                    [cart_pos, self.xy])
                 if intercepts:
                     if temp_intercepts:
                         if distance(cart_pos, self.xy) > distance(interception, self.xy):
@@ -259,7 +269,6 @@ class Agent:
             temp_y = temp_y[0:3]
             b_pheromones += temp_x
             b_pheromones += temp_y
-
 
         self.con.writeCharacteristic(
             self.chars.pheromones, b_pheromones, withResponse=True)
@@ -418,9 +427,9 @@ class Agent:
             b_distance_lines += temp_y
 
             if intercepts == "red":
-                b_distance_lines += b'0x01'
+                b_distance_lines += b'\x01'
             else:
-                b_distance_lines += b'0x00'
+                b_distance_lines += b'\x00'
         self.con.writeCharacteristic(
             self.chars.distance, b_distance_lines, withResponse=True)
         pass
@@ -454,7 +463,7 @@ class Pheromone:
 
     def __eq__(self, other):
         return self.x == other.x \
-               and self.y == other.y
+            and self.y == other.y
 
     def __hash__(self):
         return hash(('x', self.x,
