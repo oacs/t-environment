@@ -208,7 +208,7 @@ class EnvProcess:
                     "info"))
 
                 self.config_zone = [
-                    (0, 0), (self.borders[1][0], self.borders[0][1])]
+                    (0, 0), (max(self.borders[0][0], self.borders[1][0]), max(self.borders[0][1], self.borders[1][1]))]
                 main_queue.put(output_message("Looking for ants", "info"))
                 frame = self.video.read()
                 cropped = crop_frame(frame, self.borders)
@@ -241,6 +241,8 @@ class EnvProcess:
                 if is_inside_rect(triangle.center, self.config_zone):
                     # print(triangle.position)
                     self.possible_colors.remove(color)
+                    main_queue.put(output_message(
+                        "Possible agent added " + color.color.value, "info"))
                     new_ant: Agent
                     new_ant = find_ant(self.ants, color)
                     if new_ant is not None and new_ant.connected:
@@ -292,7 +294,7 @@ class EnvProcess:
                 f"Agent {agent.color} BTLEInternalError", "error"))
         except Empty:
             pass
-        threading.Timer(0.2, function=self.update_agent, args=[
+        threading.Timer(0, function=self.update_agent, args=[
                         agent, following, main_queue]).start()
 
     def draw_borders(self, frame):

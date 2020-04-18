@@ -5,7 +5,7 @@ import queue
 import sys
 import time
 from collections import OrderedDict
-
+from threading import Thread
 from enum import Enum
 from struct import unpack, pack
 from typing import List
@@ -284,9 +284,11 @@ class Agent:
 
     def update(self, triangle, time_since_last_update, pheromones, walls: Wall):
         """ Update the sensors of the agent via BLE"""
-        if triangle.is_valid() and self.triangle.is_valid():
-            self.speed_rotation = distance(
-                self.triangle.top, triangle.top) / time_since_last_update
+
+        time_to_update = time.time()
+        # if triangle.is_valid() and self.triangle.is_valid():
+        #     self.speed_rotation = distance(
+        #         self.triangle.top, triangle.top) / time_since_last_update
         self.triangle = triangle
 
         # Calc speed
@@ -307,15 +309,17 @@ class Agent:
             self.sending.pheromone = "none"
 
         self.read_message()
-        if abs(distance(prev_position, new_position)) > 6:
-            self.xy = self.triangle.center
-            self.send_pos()
-            self.distance_sensor(walls)
-            if self.collide:
-                self.send_distance_lines()
-        else:
-            self.xy = prev_position
+        # if abs(distance(prev_position, new_position)) > 6:
+        self.xy = self.triangle.center
+        self.send_pos()
+        self.distance_sensor(walls)
+        if self.collide:
+            self.send_distance_lines()
+        # else:
+        #     self.xy = prev_position
         self.send_rotation()
+        time_to_update = time.time() - time_to_update
+        print(time_to_update)
 
     def read_message(self):
         """ Check the com char of the agent and process the msg """
