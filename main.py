@@ -26,14 +26,14 @@ layout = [
 # Create the Window
 window = sg.Window('UCAB-Bot Environment', layout, location=(0, 0), margins=(0, 0),
                    size=(1500, 900), resizable=True, background_color=DARK, metadata={
-        "last_update": 0,
-        "tempPos": (0,0)
-    }).Finalize()
+    "last_update": 0,
+    "tempPos": (0, 0)
+}).Finalize()
 
 graph_elem = window['MAIN-GRAPH']  # type sg.Graph
 graph_elem.bind('<Motion>', "-MOUSE-MOTION")
 main_queue = queue.Queue()
-env_process = EnvProcess(0, 0, 4, max_ants=1)
+env_process = EnvProcess(0, 0, 3, max_ants=1)
 env_process.start_thread(main_queue)
 # window["MAIN-GRAPH"].set_size((env_process.video.width, env_process.video.height))
 # window["COLORS-GRAPH"].set_size((env_process.video.width, env_process.video.height))
@@ -72,7 +72,8 @@ while True:
         # if message received from queue, display the message in the Window
     if message is not None:
         if message["event"] is not None and message["values"] is not None:
-            process_events(message["event"], message["values"], window, env_process)
+            process_events(message["event"],
+                           message["values"], window, env_process)
             # graph_events(message["event"], message["values"], window, env_process)
             # agent_gui_event(message["event"], message["values"], window, env_process)
         # window.refresh()
@@ -80,7 +81,7 @@ while True:
     # print(event)
     if event not in ("__TIMEOUT__", "graph", "agent-base-speed", "MAIN-GRAPH-MOUSE-MOTION"):
         # print(window["MAIN-GRAPH"].user_bind_event)
-        print('You entered ', event, values )
+        print('You entered ', event, values)
     # if event in (None, 'Cancel'):  # if user closes window or clicks cancel
     #     break
     else:
