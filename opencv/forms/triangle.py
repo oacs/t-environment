@@ -104,6 +104,7 @@ def get_triangle(frame, config=Colors.purple.value, prev_pos=False):
                 # cv2.polylines(frame, approx, True, 255, 5)
                 triangle = Triangle(
                     approx, (x, y), config.color)
+                break
                 # cv2.circle(mask, triangle.top, 12, 255)
 
     # cv2.imshow('mas02k', mask)
