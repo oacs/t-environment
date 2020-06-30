@@ -6,10 +6,8 @@ import numpy as np
 
 class Colors(Enum):
     """ Colors enums """
-    red = "R"
     green = "G"
     blue = "B"
-    purple = "P"
     yellow = "Y"
     unset = "unset"
 
@@ -49,12 +47,7 @@ GREEN_CONF = ColorFilter(Colors.green, low_hue=35, max_hue=70,
                          min_area=20, max_area=900
                          )
 
-PURPLE_CONF = ColorFilter(Colors.purple, low_hue=120, max_hue=160,
-                          low_sat=40, max_sat=150,
-                          low_bri=90, max_bri=160,
-                          arc=8,
-                          min_area=10, max_area=900
-                          )
+
 YELLOW_CONF = ColorFilter(Colors.yellow, low_hue=0, max_hue=50,
                           low_sat=50, max_sat=255,
                           low_bri=140, max_bri=210,
