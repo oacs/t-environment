@@ -1,0 +1,27 @@
+{
+  "ants": [
+    {
+      "color": "green",
+      "config": {
+
+      },
+      "address": "DD:DE:63:3A:25:CB"
+    },
+    {
+      "color": "blue",
+      "config": {
+
+      },
+      "address": "FD:19:B1:33:A9:9E"
+    },
+    {
+      "color": "yellow",
+      "config": {
+
+      },
+      "address": "CF:67:7D:8F:EB:34"
+    }
+  ],
+  "max_ants": 2,
+  "possible_colors": ["Y", "B", "G"]
+}

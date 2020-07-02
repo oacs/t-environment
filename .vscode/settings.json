@@ -1,5 +1,5 @@
 {
     "python.linting.pylintEnabled": true,
     "python.linting.enabled": true,
-    "python.pythonPath": "/home/oacs/tesis/tesispy/bin/python"
+    "python.pythonPath": "/home/oacs/tesis/new/bin/python"
 }

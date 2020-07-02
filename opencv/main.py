@@ -15,7 +15,7 @@ from opencv.agent.pheromone import Pheromone, __remove_pheromone as remove_phero
 from opencv.ble.config import find_ant
 from opencv.box import Box
 from opencv.forms.borders import get_rect_borders, crop_frame
-from opencv.forms.color import GREEN_CONF, PURPLE_CONF, ColorFilter
+from opencv.forms.color import GREEN_CONF, YELLOW_CONF, ColorFilter
 from opencv.forms.triangle import get_triangle, Triangle
 from opencv.wall import Wall
 
@@ -144,7 +144,7 @@ def check_for_borders(video):
     return borders
 
 
-DEFAULT_COLORS: List[ColorFilter] = [GREEN_CONF, PURPLE_CONF]
+DEFAULT_COLORS: List[ColorFilter] = [GREEN_CONF, YELLOW_CONF]
 
 
 class EnvProcess:
@@ -165,16 +165,21 @@ class EnvProcess:
     boxes: List[Box]
     walls: List[Wall]
     config_zone: list
+    possible_ants: list
 
-    def __init__(self, name, auto, focus, possible_colors=None, max_ants=2):
-        if possible_colors is None:
+    def __init__(self, name, auto, focus, config):
+
+        if config['possible_colors'] is None:
             possible_colors = DEFAULT_COLORS
+        else:
+            possible_colors = config['possible_colors']
+        self.possible_ants = config["ants"]
         self.queue = Queue()
         self.video = VideoCapture(name, auto, focus)
         self.ants: List[Agent] = list()
         self.unknown_triangles: List[Triangle] = list()
         self.possible_colors = possible_colors
-        self.max_ants = max_ants
+        self.max_ants = config['max_ants']
         self.borders: List[tuple] = list()
         self.looking = False
         self.started = False
@@ -245,7 +250,7 @@ class EnvProcess:
                     main_queue.put(output_message(
                         "Possible agent added " + color.color.value, "info"))
                     new_ant: Agent
-                    new_ant = find_ant(self.ants, color)
+                    new_ant = find_ant(self.ants, color, self.possible_colors)
                     if new_ant is not None and new_ant.connected:
                         main_queue.put(output_message(
                             "New agent added " + new_ant.color, "info"))
