@@ -25,8 +25,10 @@ def cart2pol(x, y):
     if x == 0:
         if y > 0:
             theta = 90
-        else:
+        elif y < 0:
             theta = -90
+        else:
+            theta = 0
     else:
         theta = np.arctan2(y, x)
     rho = np.hypot(x, y)
