@@ -123,7 +123,7 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
                     for wall in env_process.walls:
                         frame = wall.draw(frame, offset)
                     for ant in env_process.ants:
-                        frame = ant.draw_claw(frame, offset)
+                        frame = ant.claw.draw_claw(frame, offset)
                         ant.draw_dest(frame, offset)
                         ant.draw_lines(frame, offset)
             update_image(frame, window, "MAIN-GRAPH")

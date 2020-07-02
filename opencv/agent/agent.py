@@ -5,8 +5,6 @@ import queue
 import sys
 import time
 from collections import OrderedDict
-from threading import Thread
-from enum import Enum
 from struct import unpack, pack
 from typing import List
 from uuid import UUID
@@ -16,74 +14,16 @@ import cv2
 import numpy as np
 from bluepy.btle import Peripheral, BTLEException
 
+from opencv.agent.claw import Claw
 from opencv.forms.triangle import Triangle, distance
-from opencv.forms.utils import FONT, rotate_polygon, cart2pol, pol2cart
+from opencv.forms.utils import FONT, pol2cart
 from opencv.wall import Wall
+from opencv.agent.pheromone import Pheromone, get_close_pheromones, get_pheromone_type
+from opencv.agent.characteristics import Characteristics
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 LOGGER = logging.getLogger("agent")
 SENSOR_SERVICE = UUID("218EE492-8AFB-4CA6-93B6-2D0DBF2F00FE")
-
-
-class EnumChars(Enum):
-    """ Characteristics uuid enums """
-    group = "5ad56076-88c1-4e11-bd31-7d4f1e99f32c"
-    config = "79606e8e-0b90-4ade-8c21-2a8fe1e64217"
-    color = "c2a76563-3af7-4640-82be-1c841f228e6c"
-    position = "19B10001-E8F2-537E-4F6C-D104768A1214"
-    rotation = "cd185314-5651-4eb9-b8cd-16e035d88bc4"
-    debug = "645e1252-55dd-4604-8d35-add29319725b"
-    com = "a6f2eee3-d71e-4e77-a9fa-66fb946c4e96"
-    dest = "403dc772-b887-44bd-9105-1215e7886112"
-    pheromones = "5b3afbbc-c715-4d31-942d-e4d63bf04eae"
-    distance = "f17ca917-e5af-4f0f-afab-0243fb59193c"
-
-
-class Characteristics:
-    """ Characteristics that agents offer to write and read """
-
-    position: int
-    config: int
-    color: int
-    debug: int
-    com: int
-    rotation: int
-    dest: int
-    pheromones: int
-
-    def __init__(self, chars):
-        self.pheromones = -1
-        for char in chars:
-            if char.uuid == EnumChars.position.value:
-                self.position = char.getHandle()
-                continue
-            elif char.uuid == EnumChars.config.value:
-                self.config = char.getHandle()
-                continue
-            elif char.uuid == EnumChars.color.value:
-                self.color = char.getHandle()
-                continue
-            elif char.uuid == EnumChars.debug.value:
-                self.debug = char.getHandle()
-                continue
-            elif char.uuid == EnumChars.com.value:
-                self.com = char.getHandle()
-                continue
-            elif char.uuid == EnumChars.rotation.value:
-                self.rotation = char.getHandle()
-                continue
-            elif char.uuid == EnumChars.dest.value:
-                self.dest = char.getHandle()
-                continue
-            elif char.uuid == EnumChars.pheromones.value:
-                self.pheromones = char.getHandle()
-                continue
-            elif char.uuid == EnumChars.distance.value:
-                self.distance = char.getHandle()
-                continue
-            else:
-                print("Unknow char", char.uuid)
-        pass
 
 
 def rotate_2d(pts, cnt, ang=math.pi / 4):
@@ -126,6 +66,7 @@ class Agent:
     __configured: bool
     sensor_lines: List[tuple]
     collide: bool
+    claw: Claw
 
     def __init__(self, address, ):
         # self.radius is an instance variable
@@ -143,6 +84,8 @@ class Agent:
         self.rotation = 360
         self.pheromones = queue.Queue()
         self.sensor_lines = list()
+        self.claw_distance = 15
+        self.claw = Claw(self.triangle.center)
 
     def connect(self):
         """ Connect to to ant and se the config """
@@ -318,6 +261,7 @@ class Agent:
         # else:
         #     self.xy = prev_position
         self.send_rotation()
+        self.claw.pos = self.triangle.center
         time_to_update = time.time() - time_to_update
         print(time_to_update)
 
@@ -395,28 +339,6 @@ class Agent:
                         " C*", self.destination, FONT, 1,
                         255)
 
-    def draw_claw(self, frame: object, offset: tuple = (0, 0)) -> object:
-        # cv2.circle(frame, tuple(map(sum, zip(self.xy, offset))), 25, (128, 0, 128), 2);
-        x, y = tuple(map(sum, zip(self.xy, offset)))
-        forms = [np.array([
-            (x - 12, y - 10), (13 + x, y - 10),
-            (x, y - 5),
-        ]),
-            np.array([
-                (x - 12, y - 15), (x - 6, y - 15),
-                (x - 6, y - 40),
-            ]),
-            np.array([
-                (x + 6, y - 15), (x + 12, y - 15),
-                (x + 6, y - 40),
-            ])
-        ]
-        for points in forms:
-            b = rotate_polygon(points, 0, x, y)
-            cv2.polylines(frame, [b], True, (128, 0, 128))
-            cv2.fillPoly(frame, [b], (128, 0, 128))
-        return frame
-
     def send_distance_lines(self):
         b_distance_lines = b''
         b_length, length = calc_bytes_of_length(self.sensor_lines, 23)
@@ -439,51 +361,8 @@ class Agent:
         pass
 
 
-def get_pheromone_type(pheromone_type):
-    if pheromone_type == 18:
-        return "searching"
-    elif pheromone_type == b"0x00":
-        return "none"
-
-
 def calc_bytes_of_length(array: list, min_length=20):
     length = min(min_length, len(array))
     b_length = pack("i", length)
     b_length = b_length[0:2]
     return b_length, length
-
-
-class Pheromone:
-    x: int
-    y: int
-    intense: int
-    type: str
-
-    def __init__(self, x, y, intense, pheromone_type):
-        self.x = x
-        self.y = y
-        self.intense = intense
-        self.type = get_pheromone_type(pheromone_type)
-
-    def __eq__(self, other):
-        return self.x == other.x \
-            and self.y == other.y
-
-    def __hash__(self):
-        return hash(('x', self.x,
-                     'y', self.y))
-
-
-def get_close_pheromones(dist: int, pos: tuple, pheromones: List[Pheromone]):
-    close_pheromones = list(filter(lambda pheromone: distance(
-        pos, (pheromone.x, pheromone.y)) < dist, pheromones))
-    return close_pheromones
-
-
-def __upt_pheromone(pheromone: Pheromone):
-    pheromone.intense -= 1
-    return pheromone
-
-
-def __remove_pheromone(pheromone: Pheromone):
-    return pheromone.intense > 0

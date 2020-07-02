@@ -9,8 +9,9 @@ import numpy as np
 from PySimpleGUI import Multiline
 
 from cli import output_message
-from opencv.agent.agent import Agent, __remove_pheromone as remove_pheromone, \
-    __upt_pheromone as upt_pheromone, Pheromone
+from opencv.agent.agent import Agent
+from opencv.agent.pheromone import Pheromone, __remove_pheromone as remove_pheromone, \
+    __upt_pheromone as upt_pheromone
 from opencv.ble.config import find_ant
 from opencv.box import Box
 from opencv.forms.borders import get_rect_borders, crop_frame
