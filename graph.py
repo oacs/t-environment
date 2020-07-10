@@ -54,7 +54,8 @@ def process_click(type: int, coord: tuple, env_process: EnvProcess, window: Wind
                                env_process.borders[0][1])):
 
         if window["GRAPH-BOX"].metadata == "activated":
-            env_process.boxes.append(Box((x- x_offset, y- y_offset), len(env_process.boxes)))
+            if type is 2:
+                env_process.boxes.append(Box((x- x_offset, y- y_offset), len(env_process.boxes)))
         elif window["GRAPH-WALL"].metadata == "activated":
             if type == 1:
                 window.metadata["tempPos"] = (x- x_offset, y- y_offset)
@@ -118,13 +119,13 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
                 if len(env_process.borders) > 1:
                     offset = (min(env_process.borders[1][0], env_process.borders[0][0]),
                               min(env_process.borders[1][1], env_process.borders[0][1]))
+                    for ant in env_process.ants:
+                        frame = ant.claw.draw_claw(frame, offset)
+                        ant.draw_dest(frame, offset)
                     for box in env_process.boxes:
                         frame = box.draw(frame, offset)
                     for wall in env_process.walls:
                         frame = wall.draw(frame, offset)
-                    for ant in env_process.ants:
-                        frame = ant.claw.draw_claw(frame, offset)
-                        ant.draw_dest(frame, offset)
                         # ant.draw_lines(frame, offset)
             update_image(frame, window, "MAIN-GRAPH")
     if values["-TAB-GROUP-"] == "-COLORS-TAB-":

@@ -5,7 +5,7 @@ class EnumChars(Enum):
     """ Characteristics uuid enums """
     group = "5ad56076-88c1-4e11-bd31-7d4f1e99f32c"
     config = "79606e8e-0b90-4ade-8c21-2a8fe1e64217"
-    color = "c2a76563-3af7-4640-82be-1c841f228e6c"
+    claw = "c2a76563-3af7-4640-82be-1c841f228e6c"
     position = "19B10001-E8F2-537E-4F6C-D104768A1214"
     rotation = "cd185314-5651-4eb9-b8cd-16e035d88bc4"
     debug = "645e1252-55dd-4604-8d35-add29319725b"
@@ -36,8 +36,8 @@ class Characteristics:
             elif char.uuid == EnumChars.config.value:
                 self.config = char.getHandle()
                 continue
-            elif char.uuid == EnumChars.color.value:
-                self.color = char.getHandle()
+            elif char.uuid == EnumChars.claw.value:
+                self.claw = char.getHandle()
                 continue
             elif char.uuid == EnumChars.debug.value:
                 self.debug = char.getHandle()

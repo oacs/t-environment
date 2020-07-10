@@ -264,8 +264,8 @@ class Agent:
         self.send_rotation()
         self.claw.pos = self.triangle.center
         time_to_update = time.time() - time_to_update
-        print(time_to_update)
-
+        # print(time_to_update)
+        self.claw.rotation += 10
     def read_message(self):
         """ Check the com char of the agent and process the msg """
 

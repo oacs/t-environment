@@ -9,7 +9,7 @@ class Box:
     weigh: int
     radius: float
 
-    def __init__(self, pos, identifier, weigh=1, radius=25):
+    def __init__(self, pos, identifier, weigh=1, radius=10):
         self.pos = pos
         self.id = identifier
         self.weigh = weigh

@@ -283,6 +283,7 @@ class EnvProcess:
                         agent.send_dist(dest.center)
                 agent.update(triangle,
                              time_since_last_update, self.pheromones, self.walls)
+                self.boxes = agent.claw.update(agent.con.readCharacteristic(agent.chars.claw), self.boxes)
             pheromone = agent.pheromones.get_nowait()
             # print(pheromone)
             if pheromone is not None:
