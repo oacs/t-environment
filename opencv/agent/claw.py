@@ -21,12 +21,12 @@ class Claw:
     def __init__(self, pos):
         self.state = EnumClawState.open
         self.pos = pos
-        self.separation = 6
+        self.separation = 1
         self.rotation = 0
 
     def draw_claw(self, frame: object, offset: tuple = (0, 0)) -> object:
         # cv2.circle(frame, tuple(map(sum, zip(self.xy, offset))), 25, (128, 0, 128), 2);
-        x, y = tuple(map(sum, zip(self.xy, offset)))
+        x, y = tuple(map(sum, zip(self.pos, offset)))
         forms = [np.array([
             (x - 12, y - 10),
             (13 + x, y - 10),

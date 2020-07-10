@@ -41,8 +41,8 @@ class ColorFilter:
 
 
 GREEN_CONF = ColorFilter(Colors.green, low_hue=35, max_hue=70,
-                         low_sat=90, max_sat=190,
-                         low_bri=90, max_bri=160,
+                         low_sat=80, max_sat=200,
+                         low_bri=87, max_bri=214,
                          arc=8,
                          min_area=20, max_area=900
                          )

@@ -81,10 +81,10 @@ def get_triangle(frame, config=Colors.yellow.value, prev_pos=False):
     #     print(min_crop_y, max_crop_y, min_crop_x, max_crop_x)
     #     frame = frame[min_crop_y:max_crop_y, min_crop_x: max_crop_x]
     # hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    if config == Colors.yellow.value:
-        config = YELLOW_CONF
-    elif config == Colors.green.value:
+    if config == Colors.green.value:
         config = GREEN_CONF
+    elif config == Colors.yellow.value:
+        config = YELLOW_CONF
     mask = config.get_mask(frame)
     # Blur image
     # mask = cv2.GaussianBlur(mask, (5, 5), 1)

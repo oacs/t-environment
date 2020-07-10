@@ -242,15 +242,15 @@ class EnvProcess:
         # print("Looking")
         color: ColorFilter
         for color in self.possible_colors:
-            triangle = get_triangle(frame, color.color.value)
+            triangle = get_triangle(frame, color)
             if triangle.is_valid():
                 if is_inside_rect(triangle.center, self.config_zone):
                     # print(triangle.position)
-                    self.possible_colors.remove(color)
                     main_queue.put(output_message(
-                        "Possible agent added " + color.color.value, "info"))
+                        "Possible agent added " + color, "info"))
                     new_ant: Agent
-                    new_ant = find_ant(self.ants, color, self.possible_colors)
+                    new_ant = find_ant(self.ants, color, self.possible_ants)
+                    self.possible_colors.remove(color)
                     if new_ant is not None and new_ant.connected:
                         main_queue.put(output_message(
                             "New agent added " + new_ant.color, "info"))

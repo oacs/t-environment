@@ -125,7 +125,7 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
                     for ant in env_process.ants:
                         frame = ant.claw.draw_claw(frame, offset)
                         ant.draw_dest(frame, offset)
-                        ant.draw_lines(frame, offset)
+                        # ant.draw_lines(frame, offset)
             update_image(frame, window, "MAIN-GRAPH")
     if values["-TAB-GROUP-"] == "-COLORS-TAB-":
         frame = env_process.read()

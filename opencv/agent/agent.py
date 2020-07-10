@@ -68,7 +68,7 @@ class Agent:
     collide: bool
     claw: Claw
 
-    def __init__(self, address, ):
+    def __init__(self, address, color):
         # self.radius is an instance variable
         self.configured = False
         self.address = address
@@ -76,7 +76,8 @@ class Agent:
         self.last_update = time.time()
         self.chars = self.connect()
         if self.connected:
-            self.color = self.con.readCharacteristic(self.chars.color).decode()
+            # self.color = self.con.readCharacteristic(self.chars.color).decode()
+            self.color = color
             self.set_config()
         self.sending = Updatable()
         # self.sending.pheromone = True
@@ -85,7 +86,7 @@ class Agent:
         self.pheromones = queue.Queue()
         self.sensor_lines = list()
         self.claw_distance = 15
-        self.claw = Claw(self.triangle.center)
+        self.claw = Claw((0,0))
 
     def connect(self):
         """ Connect to to ant and se the config """
