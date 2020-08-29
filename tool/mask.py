@@ -1,10 +1,11 @@
-from PySimpleGUI import  Text, Slider, Column, Window, Combo
+from PySimpleGUI import Text, Slider, Column, Window, Combo
 
-from opencv.forms.color import GREEN_CONF, YELLOW_CONF, ColorFilter, Colors
+from opencv.forms.color import GREEN_CONF, YELLOW_CONF, PURPLE_CONF, ColorFilter, Colors
 from opencv.main import EnvProcess
 
 mask_gui = Column([
-    [Text("Select default config: "), Combo(["Purple mask", "Green mask", "Empty mask"], key="mask-combo", enable_events=True)],
+    [Text("Select default config: "), Combo(["Purple mask", "Green mask", "Yellow mask", "Empty mask"],
+                                            key="mask-combo", enable_events=True)],
     [Text("Min Hue: "),
      Slider(range=(0, 255), orientation="h", disabled=False, key="mask-min-hue", size=(80, 20))],
     [Text("Max Hue: "),
@@ -27,9 +28,11 @@ def mask_gui_event(event: str, values: dict, window: Window, env_process: EnvPro
     if event == "mask-combo":
         conf = ColorFilter(Colors.unset, 0, 255, 0, 255, 0, 255, 0, 0, 0)
         if values["mask-combo"] == "Purple mask":
-            conf = YELLOW_CONF
+            conf = PURPLE_CONF
         elif values["mask-combo"] == "Green mask":
             conf = GREEN_CONF
+        elif values["mask-combo"] == "Yellow mask":
+            conf = YELLOW_CONF
         window["mask-min-hue"].update(conf.low_hsb[0])
         window["mask-max-hue"].update(conf.max_hsb[0])
         window["mask-min-sat"].update(conf.low_hsb[1])

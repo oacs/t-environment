@@ -9,6 +9,7 @@ class Colors(Enum):
     green = "G"
     blue = "B"
     yellow = "Y"
+    purple = "P"
     unset = "unset"
 
 
@@ -21,7 +22,7 @@ class ColorFilter:
     max_area: int
     color: Colors
 
-    def __init__(self, color,  low_hue, max_hue, low_sat, max_sat, low_bri, max_bri, arc, min_area, max_area):
+    def __init__(self, color, low_hue, max_hue, low_sat, max_sat, low_bri, max_bri, arc, min_area, max_area):
         self.low_hsb = np.array([low_hue, low_sat, low_bri])
         self.max_hsb = np.array([max_hue, max_sat, max_bri])
         self.arc = arc
@@ -40,17 +41,34 @@ class ColorFilter:
         return mask
 
 
-GREEN_CONF = ColorFilter(Colors.green, low_hue=35, max_hue=70,
+GREEN_CONF = ColorFilter(Colors.green,
+                         low_hue=35, max_hue=70,
                          low_sat=80, max_sat=200,
                          low_bri=87, max_bri=214,
                          arc=8,
                          min_area=20, max_area=900
                          )
 
-
-YELLOW_CONF = ColorFilter(Colors.yellow, low_hue=0, max_hue=50,
+YELLOW_CONF = ColorFilter(Colors.yellow,
+                          low_hue=0, max_hue=50,
                           low_sat=50, max_sat=255,
                           low_bri=140, max_bri=210,
                           arc=8,
                           min_area=50, max_area=900
                           )
+
+PURPLE_CONF = ColorFilter(Colors.purple,
+                          low_hue=90, max_hue=165,
+                          low_sat=47, max_sat=115,
+                          low_bri=96, max_bri=170,
+                          arc=8,
+                          min_area=50, max_area=900
+                          )
+
+RED_CONF = ColorFilter(Colors.purple,
+                       low_hue=90, max_hue=165,
+                       low_sat=47, max_sat=115,
+                       low_bri=96, max_bri=170,
+                       arc=8,
+                       min_area=50, max_area=900
+                       )

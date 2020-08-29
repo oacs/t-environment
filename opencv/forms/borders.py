@@ -18,8 +18,8 @@ def get_rect_borders(frame):
         "low_bri": 00,
         "max_bri": 50,
         "arc": 8,
-        "min_area": 600,
-        "max_area": 2400,
+        "min_area": 300,
+        "max_area": 600,
     }
     # min_x = 200
     # max_x = 500
