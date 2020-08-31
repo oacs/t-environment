@@ -1,7 +1,7 @@
 """ Triangle module """
 import math  # 'math' needed for 'sqrt'
 import cv2
-from opencv.forms.color import YELLOW_CONF, Colors, GREEN_CONF
+from opencv.forms.color import YELLOW_CONF, Colors, GREEN_CONF, PURPLE_CONF
 from opencv.forms.utils import distance, between_pt, slope, offset_rect, delta_x_y, up_or_down, is_clockwise
 
 FONT = cv2.FONT_HERSHEY_SIMPLEX
@@ -85,6 +85,8 @@ def get_triangle(frame, config=Colors.yellow.value, prev_pos=False):
         config = GREEN_CONF
     elif config == Colors.yellow.value:
         config = YELLOW_CONF
+    elif config == Colors.purple.value:
+        config = PURPLE_CONF
     mask = config.get_mask(frame)
     # Blur image
     # mask = cv2.GaussianBlur(mask, (5, 5), 1)

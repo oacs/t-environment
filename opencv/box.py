@@ -8,12 +8,14 @@ class Box:
     id: int
     weigh: int
     radius: float
+    leader: str
 
-    def __init__(self, pos, identifier, weigh=1, radius=10):
+    def __init__(self, pos, identifier, leader="G", weigh=1, radius=10):
         self.pos = pos
         self.id = identifier
         self.weigh = weigh
         self.radius = radius
+        self.leader = leader
 
     def draw(self, frame, offset: Tuple[int] = (0, 0)):
         color = (74, 200, 244)

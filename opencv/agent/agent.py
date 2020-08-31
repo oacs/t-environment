@@ -79,14 +79,20 @@ class Agent:
             # self.color = self.con.readCharacteristic(self.chars.color).decode()
             self.color = color
             self.set_config()
+            self.claw_distance = 15
+            self.claw = Claw((0, 0), self.color)
+            self.claw.box_id = 0
+            self.claw.status = b'\x04'
+            self.claw.leader = "G"
         self.sending = Updatable()
         # self.sending.pheromone = True
         self.triangle = Triangle()
         self.rotation = 360
         self.pheromones = queue.Queue()
         self.sensor_lines = list()
-        self.claw_distance = 15
-        self.claw = Claw((0,0))
+
+
+
 
     def connect(self):
         """ Connect to to ant and se the config """
@@ -226,7 +232,7 @@ class Agent:
         self.con.writeCharacteristic(
             self.chars.config, ("s" + speed_type).encode() + b_dest, withResponse=True)
 
-    def update(self, triangle, time_since_last_update, pheromones, walls: Wall):
+    def update(self, triangle, time_since_last_update, pheromones, walls: Wall, ):
         """ Update the sensors of the agent via BLE"""
 
         time_to_update = time.time()
@@ -265,7 +271,7 @@ class Agent:
         self.claw.pos = self.triangle.center
         time_to_update = time.time() - time_to_update
         # print(time_to_update)
-        self.claw.rotation += 10
+
     def read_message(self):
         """ Check the com char of the agent and process the msg """
 

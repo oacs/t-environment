@@ -33,7 +33,7 @@ window = sg.Window('UCAB-Bot Environment', layout, location=(0, 0), margins=(0, 
 graph_elem = window['MAIN-GRAPH']  # type sg.Graph
 graph_elem.bind('<Motion>', "-MOUSE-MOTION")
 main_queue = queue.Queue()
-env_process = EnvProcess(2, 0, 3, read_config())
+env_process = EnvProcess(3, 0, 3, read_config())
 env_process.start_thread(main_queue)
 
 # window["MAIN-GRAPH"].set_size((env_process.video.width, env_process.video.height))

@@ -120,7 +120,7 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
                     offset = (min(env_process.borders[1][0], env_process.borders[0][0]),
                               min(env_process.borders[1][1], env_process.borders[0][1]))
                     for ant in env_process.ants:
-                        frame = ant.claw.draw_claw(frame, offset)
+                        frame = ant.claw.draw_claw(frame,env_process.ants, offset)
                         ant.draw_dest(frame, offset)
                     for box in env_process.boxes:
                         frame = box.draw(frame, offset)

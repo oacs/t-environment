@@ -1,7 +1,7 @@
 {
   "ants": [
     {
-      "color": "Y",
+      "color": "P",
       "config": {
 
       },
@@ -22,6 +22,6 @@
       "address": "CF:67:7D:8F:EB:34"
     }
   ],
-  "max_ants": 1,
-  "possible_colors": ["G"]
+  "max_ants": 2,
+  "possible_colors": ["G", "P"]
 }
