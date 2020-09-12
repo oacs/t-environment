@@ -1,6 +1,6 @@
-from queue import Queue, Empty
 import threading
 import time
+from queue import Empty, Queue
 from typing import List
 
 import bluepy
@@ -9,14 +9,15 @@ import numpy as np
 from PySimpleGUI import Multiline
 
 from cli import output_message
-from opencv.agent.agent import Agent
-from opencv.agent.pheromone import Pheromone, __remove_pheromone as remove_pheromone, \
-    __upt_pheromone as upt_pheromone
+from opencv.agent.agent import Agent, State
+from opencv.agent.pheromone import Pheromone
+from opencv.agent.pheromone import __remove_pheromone as remove_pheromone
+from opencv.agent.pheromone import __upt_pheromone as upt_pheromone
 from opencv.ble.config import find_ant
 from opencv.box import Box
-from opencv.forms.borders import get_rect_borders, crop_frame
+from opencv.forms.borders import crop_frame, get_rect_borders
 from opencv.forms.color import GREEN_CONF, YELLOW_CONF, ColorFilter
-from opencv.forms.triangle import get_triangle, Triangle
+from opencv.forms.triangle import Triangle, get_triangle
 from opencv.wall import Wall
 
 
@@ -117,19 +118,9 @@ def test_mask(frame):
     for i in range(blur):
         mask = cv2.GaussianBlur(mask, (5, 5), 1)
 
-    # mask = cv2.inRange(hsv, lower_blue, upper_blue)
     res: object = cv2.bitwise_and(frame, frame)
     contours, _ = cv2.findContours(
         mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    # for cnt in contours:
-    #     area = cv2.contourArea(cnt)
-    # if 200 < area < 600:
-    # if area < 10 or area > 100:
-    #     break
-    # approx = cv2.approxPolyDP(
-    #     cnt, (arc / 100) * cv2.arcLength(cnt, True), True)
-    # cv2.drawContours(res, [approx], 0, (255), 5)
-    # pos = approx_xy(approx, area, res)
     return res, mask
 
 
@@ -145,6 +136,7 @@ DEFAULT_COLORS: List[ColorFilter] = [GREEN_CONF, YELLOW_CONF]
 
 class EnvProcess:
     """ buffer-less VideoCapture """
+    # pylint: disable=too-many-instance-attributes
     unknown_triangles: List[Triangle]
     video: VideoCapture
     ants: List[Agent]
@@ -183,9 +175,11 @@ class EnvProcess:
         self.run = False
         self.config_zone = None
         self.boxes = list()
+        self.boxes.append(Box((150, 36), 0, None, 3))
         self.walls = list()
 
     def start_thread(self, main_queue: Queue):
+        ''' statr a thread '''
         self.thread = threading.Thread(target=self._gen, args=[main_queue])
         main_queue.put(output_message("Process started", "info"))
         self.thread.daemon = True
@@ -205,19 +199,24 @@ class EnvProcess:
                     self.borders = check_for_borders(self.video)[0]
 
                 main_queue.put(output_message(
-                    "Setting config zone (" + str(self.borders[1][0] + 150) + ", " + str(
+                    "Setting config zone (" +
+                    str(self.borders[1][0] + 150) + ", "
+                    + str(
                         self.borders[0][1] + 250) + ")",
                     "info"))
 
                 self.config_zone = [
-                    (0, 0), (max(self.borders[0][0], self.borders[1][0]), max(self.borders[0][1], self.borders[1][1]))]
+                    (0, 0),
+                    (max(self.borders[0][0], self.borders[1][0]),
+                     max(self.borders[0][1],
+                         self.borders[1][1]))]
                 main_queue.put(output_message("Looking for ants", "info"))
                 frame = self.video.read()
                 cropped = crop_frame(frame, self.borders)
                 if len(self.ants) != self.max_ants and not self.looking:
                     self.looking = True
                     threading.Timer(0, function=self.look_for_new_ants, args=[
-                                    cropped, main_queue]).start()
+                        cropped, main_queue]).start()
                 while True:
                     frame = self.video.read()
                     cropped = crop_frame(frame, self.borders)
@@ -235,6 +234,7 @@ class EnvProcess:
         return self.queue.get()
 
     def look_for_new_ants(self, frame, main_queue):
+        ''' look_for_new_ants '''
         color: ColorFilter
         for color in self.possible_colors:
             triangle = get_triangle(frame, color)
@@ -250,7 +250,7 @@ class EnvProcess:
                             "New agent added " + new_ant.color, "info"))
                         self.ants.insert(0, new_ant)
                         self.update_agent(
-                            new_ant, new_ant.color == "P", main_queue)
+                            new_ant, main_queue)
                     else:
                         self.possible_colors.append(color)
         frame = self.video.read()
@@ -262,7 +262,8 @@ class EnvProcess:
         else:
             self.looking = False
 
-    def update_agent(self, agent, following, main_queue):
+    def update_agent(self, agent, main_queue):
+        ''' update_agent '''
 
         time_since_last_update = (time.time() - agent.last_update) * 1000
         frame = self.video.read()
@@ -270,14 +271,21 @@ class EnvProcess:
         triangle = get_triangle(cropped, agent.color)
         try:
             if triangle.is_valid():
-                if following:
-                    dest = get_triangle(cropped, "G")
-                    if dest.is_valid():
-                        agent.destination = dest.center
-                        agent.send_dist(dest.center)
+                if agent.is_leader and agent.state == State.waiting_for_box:
+                    agent.destination = self.boxes[0].pos
+                    agent.state = State.going_to_box
+                    agent.send_box_data(self.boxes[0])
                 agent.update(triangle,
-                             time_since_last_update, self.pheromones, self.walls)
-                self.boxes = agent.claw.update(agent.con.readCharacteristic(agent.chars.claw), self.boxes, self.ants)
+                             time_since_last_update,
+                             self.pheromones, self.walls)
+                self.boxes = agent.claw.update(agent.con.readCharacteristic(
+                    agent.chars.claw), self.boxes, agent, self.ants)
+                for event in agent.com_queue:
+                    if event[0] == 33:
+                        for ant in self.ants:
+                            if ant.color != agent.color:
+                                ant.send_help_call(agent.triangle.center)
+                agent.com_queue.clear()
             pheromone = agent.pheromones.get_nowait()
             if pheromone is not None:
                 self.pheromones.append(pheromone)
@@ -295,21 +303,25 @@ class EnvProcess:
         except Empty:
             pass
         threading.Timer(0, function=self.update_agent, args=[
-                        agent, following, main_queue]).start()
+                        agent, main_queue]).start()
 
     def draw_borders(self, frame):
+        ''' draw_borders '''
         if len(self.borders) == 2:
             cv2.rectangle(
                 frame, self.borders[0], self.borders[1], 200)
         return frame
 
     def draw_config(self, frame):
+        ''' draw_config '''
         if self.config_zone is not None and len(self.config_zone) == 2:
             cv2.rectangle(
                 frame, self.config_zone[0], self.config_zone[1], 200)
         return frame
 
     def put_on_queue(self, frame):
+        ''' put_on_queue '''
+
         if not self.queue.empty():
             try:
                 self.queue.get_nowait()  # discard previous (unprocessed) frame
@@ -318,12 +330,14 @@ class EnvProcess:
         self.queue.put(frame)
 
     def draw_xy(self, frame, x, y):
+        ''' draw_xy '''
         if len(self.borders) == 2:
             frame = cv2.putText(frame, f"( {x}, {y} )", (min(self.borders[0][0], self.borders[1][0]) - 50, 50), cv2.FONT_HERSHEY_COMPLEX, 0.5,
                                 (140, 25, 78))
         return frame
 
     def draw_pheromones(self, frame):
+        ''' draw_pheromones '''
         for pheromone in self.pheromones:
             frame = cv2.circle(frame, (pheromone.x + min(self.borders[1][0], self.borders[0][0]),
                                        pheromone.y + min(self.borders[1][1], self.borders[0][1])),
@@ -332,6 +346,7 @@ class EnvProcess:
         return frame
 
     def update_pheromones(self):
+        ''' update_pheromones '''
         self.pheromones = list(map(upt_pheromone, self.pheromones))
         self.pheromones = list(filter(remove_pheromone, self.pheromones))
 

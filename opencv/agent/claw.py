@@ -35,13 +35,13 @@ class Claw:
         self.pos = pos
         self.separation = 20
         self.rotation = 0
-        self.status = b'\x02'
+        self.status = b'\x01'
         self.agent = agent
         self.leader = ""
         self.leader_pos = (0, 0)
         self.length = 40
 
-    def update(self, status, boxes, ants: List):
+    def update(self, status, boxes, agent , ants: List):
         ''' update status of the claw '''
         # closed
         if (self.status == b'\x02') and (status == b'\x01'):
@@ -56,12 +56,14 @@ class Claw:
                 if distance_to_box < 80:
                     self.status = b'\x04'
                     self.box_id = box.id
+                    agent.con.writeCharacteristic(agent.chars.claw, b'\x04', withResponse=True)
                     if box.leader is None:
                         box.leader = self.agent
                     else:
                         self.leader = box.leader
                         for ant in ants:
                             if ant.color == box.leader:
+                                ant.con.writeCharacteristic(ant.chars.claw, b'\x06', withResponse=True)
                                 self.leader_pos = ant.triangle.center
                     break
             return boxes
@@ -78,7 +80,7 @@ class Claw:
                 if box.leader == self.agent:
                     new_pos = \
                         rotate_polygon(
-                            [(self.pos[0], self.pos[1] - 80)],
+                            [(self.pos[0], self.pos[1] - 30)],
                             self.rotation, self.pos[0], self.pos[1])[0]
                     box.pos = (new_pos[0], new_pos[1])
                 else:

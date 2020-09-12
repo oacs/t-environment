@@ -1,14 +1,14 @@
 {
   "ants": [
     {
-      "color": "P",
+      "color": "R",
       "config": {
 
       },
       "address": "DD:DE:63:3A:25:CB"
     },
     {
-      "color": "B",
+      "color": "P",
       "config": {
 
       },
@@ -22,6 +22,6 @@
       "address": "CF:67:7D:8F:EB:34"
     }
   ],
-  "max_ants": 2,
-  "possible_colors": ["G", "P"]
+  "max_ants": 3,
+  "possible_colors": ["G", "P", "R"]
 }

@@ -5,6 +5,7 @@ import queue
 import sys
 import time
 from collections import OrderedDict
+from enum import Enum
 from struct import pack, unpack
 from typing import List
 from uuid import UUID
@@ -18,6 +19,7 @@ from opencv.agent.characteristics import Characteristics
 from opencv.agent.claw import Claw
 from opencv.agent.pheromone import (Pheromone, get_close_pheromones,
                                     get_pheromone_type)
+from opencv.box import Box
 from opencv.forms.triangle import Triangle, distance
 from opencv.forms.utils import FONT, pol2cart
 from opencv.wall import Wall
@@ -37,6 +39,15 @@ def rotate_2d(pts, cnt, ang=math.pi / 4):
 
 # class Service:
 #    """ Service that an agent offers """
+class State(Enum):
+    """ Colors enums """
+    waiting_for_leader = "wfl"
+    waiting_for_box = "wfb"
+    waiting_for_help = "wfh"
+    going_to_help = "gth"
+    going_to_box = "gtb"
+    going_to_dest = "gtd"
+    following_leader = "fl"
 
 
 class Updatable:
@@ -77,8 +88,11 @@ class Agent:
     speed_rotation = 0
     __configured: bool
     sensor_lines: List[tuple]
-    collide: bool
+    com_queue: List
     claw: Claw
+    collide: bool
+    is_leader: bool
+    state: State
 
     def __init__(self, address, color):
         # self.radius is an instance variable
@@ -92,15 +106,21 @@ class Agent:
             self.set_config()
             self.claw_distance = 15
             self.claw = Claw((0, 0), self.color)
-            self.claw.box_id = 0
-            self.claw.status = b'\x04'
-            self.claw.leader = "G"
+            # self.claw.box_id = 0
+            # self.claw.status = b'\x04'
+            # self.claw.leader = "G"
+            self.is_leader = color == "G"
+        if self.is_leader:
+            self.state = State.waiting_for_box
+        else:
+            self.state = State.waiting_for_leader
         self.sending = Updatable()
         # self.sending.pheromone = True
         self.triangle = Triangle()
         self.rotation = 360
         self.pheromones = queue.Queue()
         self.sensor_lines = list()
+        self.com_queue = list()
 
     def connect(self):
         """ Connect to to ant and se the config """
@@ -303,8 +323,12 @@ class Agent:
             intense = unpack("i", message[2:6])[0]
             self.pheromones.put(
                 Pheromone(self.xy[0], self.xy[1], intense, message[1]))
-        if message[0] == 18:
+        elif message[0] == 18:
             self.sending.pheromone = get_pheromone_type(message[1])
+        elif message[0] == 33:
+            self.com_queue.append(message)
+        else:
+            return
 
         self.con.writeCharacteristic(
             self.chars.com, "0".encode(), withResponse=True)
@@ -360,7 +384,7 @@ class Agent:
                         255)
 
     def send_distance_lines(self):
-        ''' send distance lines '''
+        """ send distance lines """
         b_distance_lines = b''
         b_length, length = calc_bytes_of_length(self.sensor_lines, 23)
         b_distance_lines += b_length
@@ -380,9 +404,26 @@ class Agent:
         self.con.writeCharacteristic(
             self.chars.distance, b_distance_lines, withResponse=True)
 
+    def send_box_data(self, box: Box):
+        self.state = State.going_to_box
+        box_data = b'\x22'
+        box_data += pack("i", box.weigh).split(b'\x00')[0]
+        self.destination = box.pos
+        test = self.con.writeCharacteristic(self.chars.com, box_data, withResponse=True)
+        box_data += box_data
+
+    def send_help_call(self, agent_pos):
+        self.destination = agent_pos
+        temp_x = pack("i", agent_pos[0])[0:3]
+        temp_y = pack("i", agent_pos[1])[0:3]
+
+        agent_data = b'\x30'
+        agent_data += temp_x + temp_y
+        self.con.writeCharacteristic(self.chars.com,agent_data, withResponse=True )
+
 
 def calc_bytes_of_length(array: list, min_length=20):
-    ''' calc bytes of length of array '''
+    """ calc bytes of length of array """
     length = min(min_length, len(array))
     b_length = pack("i", length)
     b_length = b_length[0:2]

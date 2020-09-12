@@ -10,6 +10,7 @@ class Colors(Enum):
     blue = "B"
     yellow = "Y"
     purple = "P"
+    red = "R"
     unset = "unset"
 
 
@@ -65,10 +66,10 @@ PURPLE_CONF = ColorFilter(Colors.purple,
                           min_area=50, max_area=900
                           )
 
-RED_CONF = ColorFilter(Colors.purple,
-                       low_hue=90, max_hue=165,
-                       low_sat=47, max_sat=115,
-                       low_bri=96, max_bri=170,
+RED_CONF = ColorFilter(Colors.red,
+                       low_hue=0, max_hue=165,
+                       low_sat=120, max_sat=195,
+                       low_bri=105, max_bri=147,
                        arc=8,
                        min_area=50, max_area=900
                        )
