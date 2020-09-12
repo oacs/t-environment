@@ -5,21 +5,22 @@ import queue
 import sys
 import time
 from collections import OrderedDict
-from struct import unpack, pack
+from struct import pack, unpack
 from typing import List
 from uuid import UUID
 
 import bluepy
 import cv2
 import numpy as np
-from bluepy.btle import Peripheral, BTLEException
+from bluepy.btle import BTLEException, Peripheral
 
+from opencv.agent.characteristics import Characteristics
 from opencv.agent.claw import Claw
+from opencv.agent.pheromone import (Pheromone, get_close_pheromones,
+                                    get_pheromone_type)
 from opencv.forms.triangle import Triangle, distance
 from opencv.forms.utils import FONT, pol2cart
 from opencv.wall import Wall
-from opencv.agent.pheromone import Pheromone, get_close_pheromones, get_pheromone_type
-from opencv.agent.characteristics import Characteristics
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 LOGGER = logging.getLogger("agent")
@@ -27,13 +28,15 @@ SENSOR_SERVICE = UUID("218EE492-8AFB-4CA6-93B6-2D0DBF2F00FE")
 
 
 def rotate_2d(pts, cnt, ang=math.pi / 4):
-    """ pts = {} Rotates points(nx2) about center cnt(2) by angle ang(1) in radian """
+    """ Rotates points(nx2) about center cnt(2) by angle ang(1) in radian """
 
-    return np.dot(pts - cnt, np.array([(math.cos(ang), math.sin(ang)), (-math.sin(ang), math.cos(ang))]) + cnt)
+    return np.dot(pts - cnt, np.array([
+        (math.cos(ang), math.sin(ang)),
+        (-math.sin(ang), math.cos(ang))]) + cnt)
 
 
-class Service:
-    """ Service that an agent offers """
+# class Service:
+#    """ Service that an agent offers """
 
 
 class Updatable:
@@ -45,9 +48,18 @@ class Updatable:
         # self.radius is an instance variable
         self.rotation = False
 
+    def check_updates(self):
+        ''' check updates todo'''
+        return self.rotation
+
+    def check_rotation(self):
+        ''' check_rotation todo '''
+        return self.pheromone
+
 
 class Agent:
     """ Agent with sensor values and methods to communicate """
+    # pylint: disable=too-many-instance-attributes
     color: str
     chars: Characteristics
     triangle: Triangle
@@ -76,7 +88,6 @@ class Agent:
         self.last_update = time.time()
         self.chars = self.connect()
         if self.connected:
-            # self.color = self.con.readCharacteristic(self.chars.color).decode()
             self.color = color
             self.set_config()
             self.claw_distance = 15
@@ -90,9 +101,6 @@ class Agent:
         self.rotation = 360
         self.pheromones = queue.Queue()
         self.sensor_lines = list()
-
-
-
 
     def connect(self):
         """ Connect to to ant and se the config """
@@ -145,7 +153,6 @@ class Agent:
         except bluepy.btle.BTLEException as err:
             print("ERROR on sending pos"
                   "", err, err.message, err.emsg)
-            pass
 
     def send_rotation(self):
         """ Convert the rotation(float) to byte array and send via BLE """
@@ -166,7 +173,8 @@ class Agent:
             self.chars.dest, b_dest, withResponse=True)
 
     def distance_sensor(self, walls: List[Wall]):
-        temp_sensor_lines = list()
+        ''' make lines around the agent and check if collide '''
+        # temp_sensor_lines = list()
         start_object = None
         end_object = None
         self.collide = False
@@ -176,14 +184,17 @@ class Agent:
 
             cart_pos = pol2cart(angle, 150)
             cart_pos = (
-                int(max(0, cart_pos[0] + self.xy[0])), int(max(cart_pos[1] + self.xy[1], 0)))
+                int(max(0, cart_pos[0] + self.xy[0])),
+                int(max(cart_pos[1] + self.xy[1], 0)))
             temp_intercepts = False
             for wall in walls:
                 intercepts, interception = wall.get_intersection(
                     [cart_pos, self.xy])
                 if intercepts:
                     if temp_intercepts:
-                        if distance(cart_pos, self.xy) > distance(interception, self.xy):
+                        first = distance(cart_pos, self.xy)
+                        second = distance(interception, self.xy)
+                        if first > second:
                             cart_pos = interception
                     else:
                         cart_pos = interception
@@ -205,6 +216,7 @@ class Agent:
                 self.sensor_lines.append((cart_pos, "blue"))
 
     def send_pheromones(self, pheromones):
+        ''' send the pheromones to the agent '''
         b_pheromones = b''
         pheromones = list(OrderedDict.fromkeys(
             pheromones))  # remove duplicates
@@ -230,9 +242,10 @@ class Agent:
         b_dest = pack(
             "i", speed)
         self.con.writeCharacteristic(
-            self.chars.config, ("s" + speed_type).encode() + b_dest, withResponse=True)
+            self.chars.config, ("s" + speed_type).encode() + b_dest,
+            withResponse=True)
 
-    def update(self, triangle, time_since_last_update, pheromones, walls: Wall, ):
+    def update(self, triangle, time_since_last_update, pheromones, walls: Wall):
         """ Update the sensors of the agent via BLE"""
 
         time_to_update = time.time()
@@ -242,7 +255,7 @@ class Agent:
         self.triangle = triangle
 
         # Calc speed
-        prev_speed = self.speed
+        # prev_speed = self.speed
         self.speed = distance(
             self.triangle.center, self.xy) / time_since_last_update
 
@@ -250,10 +263,10 @@ class Agent:
         self.last_update = time.time()
 
         # update position
-        prev_position = self.xy
-        new_position = self.triangle.center
+        # prev_position = self.xy
+        # new_position = self.triangle.center
 
-        if self.sending.pheromone is not "none":
+        if self.sending.pheromone != "none":
             self.send_pheromones(get_close_pheromones(
                 12000, self.xy, pheromones))
             self.sending.pheromone = "none"
@@ -295,13 +308,12 @@ class Agent:
 
         self.con.writeCharacteristic(
             self.chars.com, "0".encode(), withResponse=True)
-        return
 
     def draw_lines(self, frame, offset=(0, 0)):
         """ Draw the destination with a circle and a line from top to pnt """
         for (line, color) in self.sensor_lines:
             if line[0] != -1 and self.triangle.is_valid():
-                if color is "red":
+                if color == "red":
                     show_color = (20, 20, 200)
                 else:
                     show_color = (200, 150, 50)
@@ -330,7 +342,8 @@ class Agent:
                      tuple(map(sum, zip(self.triangle.top, offset))), (200, 150, 50), 2)
             cv2.putText(frame,
                         ('%.2f' % (distance(self.triangle.center,
-                                            self.destination) / 5)) + " cm", self.destination,
+                                            self.destination) / 5)) + " cm",
+                        self.destination,
                         FONT, 1,
                         255)
 
@@ -347,6 +360,7 @@ class Agent:
                         255)
 
     def send_distance_lines(self):
+        ''' send distance lines '''
         b_distance_lines = b''
         b_length, length = calc_bytes_of_length(self.sensor_lines, 23)
         b_distance_lines += b_length
@@ -365,10 +379,10 @@ class Agent:
                 b_distance_lines += b'\x00'
         self.con.writeCharacteristic(
             self.chars.distance, b_distance_lines, withResponse=True)
-        pass
 
 
 def calc_bytes_of_length(array: list, min_length=20):
+    ''' calc bytes of length of array '''
     length = min(min_length, len(array))
     b_length = pack("i", length)
     b_length = b_length[0:2]

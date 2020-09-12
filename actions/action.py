@@ -1,11 +1,12 @@
-from xml.etree.ElementTree import Element, SubElement, tostring, ElementTree
-import sys
+''' action bar '''
+from xml.etree.ElementTree import Element, ElementTree, SubElement
+
 from PySimpleGUI import Button, Window
 
 # from opencv.main import EnvProcess
 from theme import WHITE
 
-action_layout = [
+ACTION_LAYOUT = [
     Button(
         button_text="",
         tooltip="Play the simulation",
@@ -32,11 +33,11 @@ action_layout = [
     ),
 ]
 
-action_keys = ["action_play_pause", "action_save"]
+ACTION_KEYS = ["action_play_pause", "action_save"]
 
 
-# noinspection PyUnusedLocal
-def action_events(event: str, values: dict, window: Window, env_process):
+def action_events(event: str, _values: dict, window: Window, env_process):
+    ''' handle all action bar events '''
     if event == "action_play_pause":
         if window["action_play_pause"].metadata["status"] == "pause":
             window["action_play_pause"].metadata["status"] = "play"
@@ -46,7 +47,8 @@ def action_events(event: str, values: dict, window: Window, env_process):
             env_process.run = True
 
         window["action_play_pause"].update(
-            image_filename="assets/img/" + window["action_play_pause"].metadata["status"] + ".png")
+            image_filename="assets/img/" +
+            window["action_play_pause"].metadata["status"] + ".png")
 
     if event == "action_save":
         simulation = Element('simulation')

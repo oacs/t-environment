@@ -1,8 +1,12 @@
+''' claw module '''
 from enum import Enum
+from typing import List
+
 import cv2
 import numpy as np
-from opencv.forms.utils import distance, cart2pol, rotate_polygon
-from typing import List
+
+from opencv.forms.utils import cart2pol, distance, rotate_polygon
+
 
 class EnumClawState(Enum):
     """ Characteristics uuid enums """
@@ -13,6 +17,8 @@ class EnumClawState(Enum):
 
 
 class Claw:
+    ''' claw of agent '''
+    # pylint: disable=too-many-instance-attributes
     state: EnumClawState
     pos: tuple
     separation: float
@@ -22,6 +28,7 @@ class Claw:
     agent: str
     leader: str
     leader_pos: tuple
+    length: int
 
     def __init__(self, pos, agent):
         self.state = EnumClawState.open
@@ -32,15 +39,16 @@ class Claw:
         self.agent = agent
         self.leader = ""
         self.leader_pos = (0, 0)
+        self.length = 40
 
     def update(self, status, boxes, ants: List):
-
-        if self.status == b'\x02':
-            if status == b'\x01':
-                self.status = b'\x01'
-                self.separation -= 1
-                return boxes
-        if self.status == b'\x01':
+        ''' update status of the claw '''
+        # closed
+        if (self.status == b'\x02') and (status == b'\x01'):
+            self.status = b'\x01'
+            self.separation -= 1
+            return boxes
+        elif self.status == b'\x01':
             if self.separation > 10:
                 self.separation -= 1
             for box in boxes:
@@ -63,41 +71,51 @@ class Claw:
         return boxes
 
     def update_box_pos(self, boxes):
+        ''' update box status '''
         new_boxes = list()
         for box in boxes:
-            if box.id == self.box_id :
+            if box.id == self.box_id:
                 if box.leader == self.agent:
-                    new_pos = rotate_polygon([(self.pos[0], self.pos[1] - 80)], self.rotation, self.pos[0], self.pos[1])[0]
+                    new_pos = \
+                        rotate_polygon(
+                            [(self.pos[0], self.pos[1] - 80)],
+                            self.rotation, self.pos[0], self.pos[1])[0]
                     box.pos = (new_pos[0], new_pos[1])
                 else:
                     self.leader_pos = box.pos
             new_boxes.append(box)
         return new_boxes
 
-    def draw_claw(self, frame: object, ants: List, offset: tuple = (0, 0)) -> object:
-        # cv2.circle(frame, tuple(map(sum, zip(self.xy, offset))), 25, (128, 0, 128), 2);
+    def draw_claw(self, frame: object, ants: List, offset: tuple = (0, 0)):
+        ''' draw the claw on canvas '''
         x, y = tuple(map(sum, zip(self.pos, offset)))
-        forms = [np.array([
-            (x - 12, y - 10),
-            (13 + x, y - 10),
-            (x, y - 5),
-        ]),
+        forms = [
             np.array([
-                (x - self.separation - 6, y - 15),
-                (x - self.separation, y - 15),
-                (x - self.separation, y - 80),
+                    (x - 12, y - 10),
+                    (13 + x, y - 10),
+
+                    (x, y - 5),
             ]),
             np.array([
-                (x + self.separation, y - 15),
-                (x + self.separation + 6, y - 15),
-                (x + self.separation, y - 80),
-            ])
+                     (x - self.separation - 6, y - 15),
+                     (x - self.separation, y - 15),
+                     (x - self.separation, y - self.length),
+                     ]),
+            np.array([
+                     (x + self.separation, y - 15),
+                     (x + self.separation + 6, y - 15),
+                     (x + self.separation, y - self.length),
+                     ])
         ]
         try:
-            if self.leader != self.agent and self.leader_pos is not (0, 0):
+            if self.leader != self.agent and self.leader_pos != (0, 0):
                 for ant in ants:
                     if ant.color == self.agent:
-                        self.rotation = cart2pol(ant.triangle.center[0] -self.leader_pos[0],ant.triangle.center[1] -self.leader_pos[1] )[0] *180 /3.1416 -90
+                        fixed_x = ant.triangle.center[0] - self.leader_pos[0]
+                        fixed_y = ant.triangle.center[1] - self.leader_pos[1]
+                        self.rotation = cart2pol(fixed_x, fixed_y
+                                                 )[0]
+                        self.rotation *= 180 / 3.1416 - 90
         except AttributeError:
             print()
 

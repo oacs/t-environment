@@ -18,6 +18,9 @@ class EnumChars(Enum):
 class Characteristics:
     """ Characteristics that agents offer to write and read """
 
+    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-few-public-methods
+
     position: int
     config: int
     color: int
@@ -32,31 +35,21 @@ class Characteristics:
         for char in chars:
             if char.uuid == EnumChars.position.value:
                 self.position = char.getHandle()
-                continue
             elif char.uuid == EnumChars.config.value:
                 self.config = char.getHandle()
-                continue
             elif char.uuid == EnumChars.claw.value:
                 self.claw = char.getHandle()
-                continue
             elif char.uuid == EnumChars.debug.value:
                 self.debug = char.getHandle()
-                continue
             elif char.uuid == EnumChars.com.value:
                 self.com = char.getHandle()
-                continue
             elif char.uuid == EnumChars.rotation.value:
                 self.rotation = char.getHandle()
-                continue
             elif char.uuid == EnumChars.dest.value:
                 self.dest = char.getHandle()
-                continue
             elif char.uuid == EnumChars.pheromones.value:
                 self.pheromones = char.getHandle()
-                continue
             elif char.uuid == EnumChars.distance.value:
                 self.distance = char.getHandle()
-                continue
             else:
                 print("Unknown char", char.uuid)
-        pass

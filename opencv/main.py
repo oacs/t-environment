@@ -62,10 +62,6 @@ def is_inside_rect(point, rect):
 FONT = cv2.FONT_HERSHEY_COMPLEX
 
 
-# app = Flask(__name__)
-# VIDEO = VideoCapture(0, 0, 4)
-
-
 def create_trackbar():
     low_hue = 0
     high_hue = 255
@@ -239,13 +235,11 @@ class EnvProcess:
         return self.queue.get()
 
     def look_for_new_ants(self, frame, main_queue):
-        # print("Looking")
         color: ColorFilter
         for color in self.possible_colors:
             triangle = get_triangle(frame, color)
             if triangle.is_valid():
                 if is_inside_rect(triangle.center, self.config_zone):
-                    # print(triangle.position)
                     main_queue.put(output_message(
                         "Possible agent added " + color, "info"))
                     new_ant: Agent
@@ -285,7 +279,6 @@ class EnvProcess:
                              time_since_last_update, self.pheromones, self.walls)
                 self.boxes = agent.claw.update(agent.con.readCharacteristic(agent.chars.claw), self.boxes, self.ants)
             pheromone = agent.pheromones.get_nowait()
-            # print(pheromone)
             if pheromone is not None:
                 self.pheromones.append(pheromone)
 
@@ -322,7 +315,6 @@ class EnvProcess:
                 self.queue.get_nowait()  # discard previous (unprocessed) frame
             except Empty:
                 pass
-        # print("gen")
         self.queue.put(frame)
 
     def draw_xy(self, frame, x, y):
