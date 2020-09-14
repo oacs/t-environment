@@ -57,6 +57,7 @@ class Claw:
                     self.status = b'\x04'
                     self.box_id = box.id
                     agent.con.writeCharacteristic(agent.chars.claw, b'\x04', withResponse=True)
+                    agent.destination = (50, 50)
                     if box.leader is None:
                         box.leader = self.agent
                     else:

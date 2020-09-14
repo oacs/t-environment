@@ -94,7 +94,7 @@ class Agent:
     is_leader: bool
     state: State
 
-    def __init__(self, address, color):
+    def __init__(self, address, color, config):
         # self.radius is an instance variable
         self.configured = False
         self.address = address
@@ -103,17 +103,17 @@ class Agent:
         self.chars = self.connect()
         if self.connected:
             self.color = color
-            self.set_config()
+            self.set_config(config)
             self.claw_distance = 15
             self.claw = Claw((0, 0), self.color)
             # self.claw.box_id = 0
             # self.claw.status = b'\x04'
             # self.claw.leader = "G"
             self.is_leader = color == "G"
-        if self.is_leader:
-            self.state = State.waiting_for_box
-        else:
-            self.state = State.waiting_for_leader
+            if self.is_leader:
+                self.state = State.waiting_for_box
+            else:
+                self.state = State.waiting_for_leader
         self.sending = Updatable()
         # self.sending.pheromone = True
         self.triangle = Triangle()
@@ -152,12 +152,27 @@ class Agent:
         """ Read the color from the agent """
         self.color = self.con.readCharacteristic(self.chars.color)
 
-    def set_config(self):
+    def set_config(self, config):
         """ Set the configuration on the agent """
 
         LOGGER.debug("setting cng")
+
+        bytes =str.encode("cng")
+        bytes += b'\x01'
+        bytes += pack("i", config["speeds"][0])[0:1]
+        bytes += pack("i", config["speeds"][1])[0:1]
+        bytes += pack("i", config["speeds"][2])[0:1]
+        if config["alt_forward"] is True:
+            bytes += b'\x01'
+        else:
+            bytes += b'\x00'
+        if config["alt_rotation"] is True:
+            bytes += b'\x01'
+        else:
+            bytes += b'\x00'
+
         self.con.writeCharacteristic(
-            self.chars.config, str.encode("cng"), withResponse=True)
+            self.chars.config, bytes, withResponse=True)
         self.__configured = True
         LOGGER.debug("set cng")
 
@@ -176,7 +191,7 @@ class Agent:
 
     def send_rotation(self):
         """ Convert the rotation(float) to byte array and send via BLE """
-        if self.destination:
+        if self.destination and self.destination[0] != -1:
             new_rotation = self.triangle.calc_rotation(
                 self.destination)
             if self.rotation == 360 or abs(self.rotation - new_rotation) > 3:
@@ -325,7 +340,7 @@ class Agent:
                 Pheromone(self.xy[0], self.xy[1], intense, message[1]))
         elif message[0] == 18:
             self.sending.pheromone = get_pheromone_type(message[1])
-        elif message[0] == 33:
+        elif message[0] in range(32, 38):
             self.com_queue.append(message)
         else:
             return
@@ -417,7 +432,7 @@ class Agent:
         temp_x = pack("i", agent_pos[0])[0:3]
         temp_y = pack("i", agent_pos[1])[0:3]
 
-        agent_data = b'\x30'
+        agent_data = b'\x40'
         agent_data += temp_x + temp_y
         self.con.writeCharacteristic(self.chars.com,agent_data, withResponse=True )
 

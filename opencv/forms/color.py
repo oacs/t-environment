@@ -68,7 +68,7 @@ PURPLE_CONF = ColorFilter(Colors.purple,
 
 RED_CONF = ColorFilter(Colors.red,
                        low_hue=0, max_hue=165,
-                       low_sat=120, max_sat=195,
+                       low_sat=120, max_sat=255,
                        low_bri=105, max_bri=147,
                        arc=8,
                        min_area=50, max_area=900

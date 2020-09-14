@@ -175,7 +175,7 @@ class EnvProcess:
         self.run = False
         self.config_zone = None
         self.boxes = list()
-        self.boxes.append(Box((150, 36), 0, None, 3))
+        self.boxes.append(Box((150, 36), 0, None, 2))
         self.walls = list()
 
     def start_thread(self, main_queue: Queue):
@@ -285,6 +285,19 @@ class EnvProcess:
                         for ant in self.ants:
                             if ant.color != agent.color:
                                 ant.send_help_call(agent.triangle.center)
+                    elif event[0] == 35:
+                        for ant in self.ants:
+                            if ant.color != agent.color:
+                                ant.destination = (50,50);
+                                ant.con.writeCharacteristic(ant.chars.com, b'\x31', withResponse=True)
+                    elif event[0] == 36:
+                        for ant in self.ants:
+                            if ant.color != agent.color:
+                                ant.con.writeCharacteristic(ant.chars.com, b'\x33', withResponse=True)
+                    elif event[0] == 37:
+                        for ant in self.ants:
+                            if ant.color != agent.color:
+                                ant.con.writeCharacteristic(ant.chars.com, b'\x32', withResponse=True)
                 agent.com_queue.clear()
             pheromone = agent.pheromones.get_nowait()
             if pheromone is not None:

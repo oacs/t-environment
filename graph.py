@@ -127,6 +127,9 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
                     for wall in env_process.walls:
                         frame = wall.draw(frame, offset)
                         # ant.draw_lines(frame, offset)
+                    cv2.circle(frame, tuple(
+                        map(sum, zip((50,50), offset))), 5, 200, 1)
+
             update_image(frame, window, "MAIN-GRAPH")
     if values["-TAB-GROUP-"] == "-COLORS-TAB-":
         frame = env_process.read()
