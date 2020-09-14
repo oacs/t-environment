@@ -19,7 +19,7 @@
     {
       "color": "G",
       "config": {
-        "speeds": [50, 80, 90],
+        "speeds": [30, 60, 70],
         "alt_forward": true,
         "alt_rotation": false
       },
