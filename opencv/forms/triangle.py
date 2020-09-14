@@ -88,7 +88,7 @@ def get_triangle(frame, config=Colors.yellow.value, prev_pos=False):
     elif config == Colors.purple.value:
         config = PURPLE_CONF
     elif config == Colors.red.value:
-        config  = RED_CONF
+        config = RED_CONF
     mask = config.get_mask(frame)
     # Blur image
     # mask = cv2.GaussianBlur(mask, (5, 5), 1)

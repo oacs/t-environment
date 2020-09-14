@@ -243,7 +243,7 @@ class EnvProcess:
                     main_queue.put(output_message(
                         "Possible agent added " + color, "info"))
                     new_ant: Agent
-                    new_ant = find_ant(self.ants, color, self.possible_ants)
+                    new_ant = find_ant(self.ants, color, self.possible_ants, self.config_zone[1])
                     self.possible_colors.remove(color)
                     if new_ant is not None and new_ant.connected:
                         main_queue.put(output_message(

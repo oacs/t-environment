@@ -29,6 +29,11 @@ borders_graph = Graph((600, 450), (0, 450), (600, 0), key='BORDERS-GRAPH',
                       metadata={
                           "a_id": None,
                       })
+nav_graph = Graph((600, 450), (0, 450), (600, 0), key='NAV-GRAPH',
+                      enable_events=True, drag_submits=True,
+                      metadata={
+                          "a_id": None,
+                      })
 
 graph_keys = ["MAIN-GRAPH", "GRAPH-MOUSE-MOTION", "-TAB-GROUP-"]
 
@@ -122,6 +127,8 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
                     for ant in env_process.ants:
                         frame = ant.claw.draw_claw(frame,env_process.ants, offset)
                         ant.draw_dest(frame, offset)
+                        ant.draw_distance(frame, offset)
+                        ant.draw_lines(frame, offset)
                     for box in env_process.boxes:
                         frame = box.draw(frame, offset)
                     for wall in env_process.walls:
@@ -148,6 +155,9 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
     if values["-TAB-GROUP-"] == "-BORDERS-TAB-":
         frame = get_rect_borders(env_process.read())[1]
         update_image(frame, window, "BORDERS-GRAPH")
+    if values["-TAB-GROUP-"] == "-NAV-TAB-":
+        frame = env_process.ants[0].recognition.area
+        update_image(frame, window, "NAV-GRAPH")
 
     if event == "-TAB-GROUP-":
         if values["-TAB-GROUP-"] == "-COLORS-TAB-":
@@ -190,13 +200,15 @@ tab_main_layout = [[main_graph, Column([
     background_color=[PRIMARY])]]
 
 tab_colors_layout = [[colors_graph]]
+tab_nav_layout = [[nav_graph]]
 tab_border_layout = [[borders_graph]]
 
 # The TabgGroup layout - it must contain only Tabs
 tab_group_layout = [
     [Tab('Main', tab_main_layout, font='Courier 15', key='-MAIN-TAB-', pad=(0, 0), background_color=[PRIMARY]),
      Tab('Colors', tab_colors_layout, key='-COLORS-TAB-', pad=(0, 0), background_color=[PRIMARY]),
-     Tab('Borders', tab_border_layout, key='-BORDERS-TAB-', pad=(0, 0), background_color=[PRIMARY]), ]]
+     Tab('Nav', tab_nav_layout, key='-COLORS-TAB-', pad=(0, 0), background_color=[PRIMARY]),
+     Tab('Borders', tab_border_layout, key='-NAV-TAB-', pad=(0, 0), background_color=[PRIMARY]), ]]
 
 # The window layout - defines the entire window
 graph_tabs = TabGroup(tab_group_layout, enable_events=True, key='-TAB-GROUP-', background_color=[PRIMARY])

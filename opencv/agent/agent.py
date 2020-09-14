@@ -22,6 +22,7 @@ from opencv.agent.pheromone import (Pheromone, get_close_pheromones,
 from opencv.box import Box
 from opencv.forms.triangle import Triangle, distance
 from opencv.forms.utils import FONT, pol2cart
+from opencv.recognition import Recognition
 from opencv.wall import Wall
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
@@ -93,8 +94,9 @@ class Agent:
     collide: bool
     is_leader: bool
     state: State
+    recognition: Recognition
 
-    def __init__(self, address, color, config):
+    def __init__(self, address, color, config, screen_dimensions):
         # self.radius is an instance variable
         self.configured = False
         self.address = address
@@ -105,6 +107,7 @@ class Agent:
             self.color = color
             self.set_config(config)
             self.claw_distance = 15
+            self.recognition = Recognition(screen_dimensions)
             self.claw = Claw((0, 0), self.color)
             # self.claw.box_id = 0
             # self.claw.status = b'\x04'
@@ -157,7 +160,7 @@ class Agent:
 
         LOGGER.debug("setting cng")
 
-        bytes =str.encode("cng")
+        bytes = str.encode("cng")
         bytes += b'\x01'
         bytes += pack("i", config["speeds"][0])[0:1]
         bytes += pack("i", config["speeds"][1])[0:1]
@@ -307,6 +310,10 @@ class Agent:
             self.sending.pheromone = "none"
 
         self.read_message()
+        self.recognition.update_vision(self.triangle.center)
+        new_dest = self.recognition.get_close_unknown_position(self.triangle.position)
+        if new_dest[0] != -1 and self.destination != (50, 50):
+            self.destination = new_dest
         # if abs(distance(prev_position, new_position)) > 6:
         self.xy = self.triangle.center
         self.send_pos()
@@ -376,15 +383,18 @@ class Agent:
 
     def draw_distance(self, frame, offset=(0, 0)):
         """ Draw the distance with a circle and a line from top to pnt """
-        if self.destination[0] != -1:
-            cv2.line(frame, tuple(map(sum, zip(self.triangle.center, offset))),
-                     tuple(map(sum, zip(self.triangle.top, offset))), (200, 150, 50), 2)
-            cv2.putText(frame,
-                        ('%.2f' % (distance(self.triangle.center,
-                                            self.destination) / 5)) + " cm",
-                        self.destination,
-                        FONT, 1,
-                        255)
+        try:
+            if self.destination[0] != -1:
+                cv2.line(frame, tuple(map(sum, zip(self.triangle.center, offset))),
+                         tuple(map(sum, zip(self.triangle.top, offset))), (200, 150, 50), 2)
+                cv2.putText(frame,
+                            ('%.2f' % (distance(self.triangle.center,
+                                                self.destination) / 5)) + " cm",
+                            self.destination,
+                            FONT, 1,
+                            255)
+        except AttributeError:
+            pass
 
     def draw_rotation(self, frame, offset=(0, 0)):
         """ Draw the rotation with a circle and a line from top to pnt """
@@ -395,8 +405,7 @@ class Agent:
                      tuple(map(sum, zip(self.triangle.top, offset))), (200, 150, 50), 2)
             cv2.putText(frame,
                         ('%.2f' % self.rotation) +
-                        " C*", self.destination, FONT, 1,
-                        255)
+                        " C*", self.destination, FONT, 1, 255)
 
     def send_distance_lines(self):
         """ send distance lines """
@@ -434,7 +443,7 @@ class Agent:
 
         agent_data = b'\x40'
         agent_data += temp_x + temp_y
-        self.con.writeCharacteristic(self.chars.com,agent_data, withResponse=True )
+        self.con.writeCharacteristic(self.chars.com, agent_data, withResponse=True)
 
 
 def calc_bytes_of_length(array: list, min_length=20):
