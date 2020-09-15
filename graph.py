@@ -29,11 +29,7 @@ borders_graph = Graph((600, 450), (0, 450), (600, 0), key='BORDERS-GRAPH',
                       metadata={
                           "a_id": None,
                       })
-nav_graph = Graph((600, 450), (0, 450), (600, 0), key='NAV-GRAPH',
-                      enable_events=True, drag_submits=True,
-                      metadata={
-                          "a_id": None,
-                      })
+
 
 graph_keys = ["MAIN-GRAPH", "GRAPH-MOUSE-MOTION", "-TAB-GROUP-"]
 
@@ -41,8 +37,8 @@ graph_keys = ["MAIN-GRAPH", "GRAPH-MOUSE-MOTION", "-TAB-GROUP-"]
 def process_click(type: int, coord: tuple, env_process: EnvProcess, window: Window):
     x, y = coord
     ant: Agent
-    x_offset = min(env_process.borders[1][0], env_process.borders[0][0]);
-    y_offset = min(env_process.borders[1][1], env_process.borders[0][1]);
+    x_offset = min(env_process.borders[1][0], env_process.borders[0][0])
+    y_offset = min(env_process.borders[1][1], env_process.borders[0][1])
 
     for i, ant in enumerate(env_process.ants):
         size = distance(ant.triangle.center, ant.triangle.top)
@@ -112,8 +108,9 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
                 window["MAIN-GRAPH"].metadata["x"] = window["MAIN-GRAPH"].user_bind_event.x
                 window["MAIN-GRAPH"].metadata["y"] = window["MAIN-GRAPH"].user_bind_event.y
             if env_process.run:
-                frame = env_process.draw_xy(frame, window["MAIN-GRAPH"].metadata["x"],
-                                            window["MAIN-GRAPH"].metadata["y"])
+                if len(env_process.borders) ==2 :
+                    frame = env_process.draw_xy(frame, window["MAIN-GRAPH"].metadata["x"] - env_process.borders_dimension_min[0],
+                                            window["MAIN-GRAPH"].metadata["y"] - env_process.borders_dimension_min[1])
                 if len(env_process.borders) > 1:
                     offset = (min(env_process.borders[1][0], env_process.borders[0][0]),
                               min(env_process.borders[1][1], env_process.borders[0][1]))
@@ -127,13 +124,11 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
                     for ant in env_process.ants:
                         frame = ant.claw.draw_claw(frame,env_process.ants, offset)
                         ant.draw_dest(frame, offset)
-                        ant.draw_distance(frame, offset)
                         ant.draw_lines(frame, offset)
                     for box in env_process.boxes:
                         frame = box.draw(frame, offset)
                     for wall in env_process.walls:
                         frame = wall.draw(frame, offset)
-                        # ant.draw_lines(frame, offset)
                     cv2.circle(frame, tuple(
                         map(sum, zip((50,50), offset))), 5, 200, 1)
 
@@ -155,9 +150,7 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
     if values["-TAB-GROUP-"] == "-BORDERS-TAB-":
         frame = get_rect_borders(env_process.read())[1]
         update_image(frame, window, "BORDERS-GRAPH")
-    if values["-TAB-GROUP-"] == "-NAV-TAB-":
-        frame = env_process.ants[0].recognition.area
-        update_image(frame, window, "NAV-GRAPH")
+
 
     if event == "-TAB-GROUP-":
         if values["-TAB-GROUP-"] == "-COLORS-TAB-":
@@ -200,14 +193,12 @@ tab_main_layout = [[main_graph, Column([
     background_color=[PRIMARY])]]
 
 tab_colors_layout = [[colors_graph]]
-tab_nav_layout = [[nav_graph]]
 tab_border_layout = [[borders_graph]]
 
 # The TabgGroup layout - it must contain only Tabs
 tab_group_layout = [
     [Tab('Main', tab_main_layout, font='Courier 15', key='-MAIN-TAB-', pad=(0, 0), background_color=[PRIMARY]),
      Tab('Colors', tab_colors_layout, key='-COLORS-TAB-', pad=(0, 0), background_color=[PRIMARY]),
-     Tab('Nav', tab_nav_layout, key='-COLORS-TAB-', pad=(0, 0), background_color=[PRIMARY]),
      Tab('Borders', tab_border_layout, key='-NAV-TAB-', pad=(0, 0), background_color=[PRIMARY]), ]]
 
 # The window layout - defines the entire window

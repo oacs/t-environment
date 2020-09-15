@@ -21,8 +21,7 @@ ACTIONS = sg.Column(layout=[ACTION_LAYOUT],
 LAYOUT = [
     [MENU_EL],
     [ACTIONS],
-    [graph_tabs, TOOLS_GUI],
-    [cli],
+    [sg.Column(layout=[[graph_tabs], [cli]]) , TOOLS_GUI],
 ]
 
 # Create the Window

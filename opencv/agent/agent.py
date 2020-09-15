@@ -103,6 +103,7 @@ class Agent:
         self.connected = False
         self.last_update = time.time()
         self.chars = self.connect()
+        self.helping = False
         if self.connected:
             self.color = color
             self.set_config(config)
@@ -124,6 +125,7 @@ class Agent:
         self.pheromones = queue.Queue()
         self.sensor_lines = list()
         self.com_queue = list()
+        self.bugging = False
 
     def connect(self):
         """ Connect to to ant and se the config """
@@ -184,8 +186,9 @@ class Agent:
         try:
             b_position = pack(
                 "ii", self.triangle.position[0], self.triangle.position[1])
+            trim_position = bytes([b_position[0], b_position[1], b_position[4], b_position[5]])
             self.con.writeCharacteristic(
-                self.chars.position, b_position, withResponse=True)
+                self.chars.position, trim_position, withResponse=True)
         except bluepy.btle.BTLEGattError:
             print("ERROR on GAT sending pos")
         except bluepy.btle.BTLEException as err:
@@ -265,8 +268,8 @@ class Agent:
         for i in range(0, length):
             temp_x = pack("i", pheromones[i].x)
             temp_y = pack("i", pheromones[i].y)
-            temp_x = temp_x[0:3]
-            temp_y = temp_y[0:3]
+            temp_x = temp_x[0:2]
+            temp_y = temp_y[0:2]
             b_pheromones += temp_x
             b_pheromones += temp_y
 
@@ -283,7 +286,7 @@ class Agent:
             self.chars.config, ("s" + speed_type).encode() + b_dest,
             withResponse=True)
 
-    def update(self, triangle, time_since_last_update, pheromones, walls: Wall):
+    def update(self, triangle, time_since_last_update, pheromones, walls: Wall, borders ):
         """ Update the sensors of the agent via BLE"""
 
         time_to_update = time.time()
@@ -312,7 +315,8 @@ class Agent:
         self.read_message()
         self.recognition.update_vision(self.triangle.center)
         new_dest = self.recognition.get_close_unknown_position(self.triangle.position)
-        if new_dest[0] != -1 and self.destination != (50, 50):
+        if new_dest[0] != -1 and self.claw.box_id == -1 and self.helping is False and self.destination != (50, 50) :
+            new_dest = (max(40, min((borders[0]-40), new_dest[0])), max(40, min(borders[1] -40, new_dest[1])) )
             self.destination = new_dest
         # if abs(distance(prev_position, new_position)) > 6:
         self.xy = self.triangle.center
@@ -333,12 +337,7 @@ class Agent:
         message = self.con.readCharacteristic(
             self.chars.com)
 
-        # if have the format => number,number
-        if message.find(0x2c) != -1:
-            self.sending.rotation = True
-            # Read dist
-            self.destination = (
-                unpack("i", message[0:4])[0], unpack("i", message[5:9])[0])
+
 
         # print(message[0], b'\x11', message, message[0] == b'\x11')
         if message[0] == 17:
@@ -347,13 +346,22 @@ class Agent:
                 Pheromone(self.xy[0], self.xy[1], intense, message[1]))
         elif message[0] == 18:
             self.sending.pheromone = get_pheromone_type(message[1])
-        elif message[0] in range(32, 38):
+        elif message[0] == 19:
+            self.bugging = False
+        elif message[0] in range(32, 50):
             self.com_queue.append(message)
+        elif message.find(0x2c) != -1:
+            # self.sending.rotation = True
+            # Read dist
+            self.destination = (
+                unpack("i", message[0:4])[0], unpack("i", message[5:9])[0])
+            self.bugging = True
         else:
             return
+        # if have the format => number,number
 
         self.con.writeCharacteristic(
-            self.chars.com, "0".encode(), withResponse=True)
+            self.chars.com, b'\x00', withResponse=True)
 
     def draw_lines(self, frame, offset=(0, 0)):
         """ Draw the destination with a circle and a line from top to pnt """
@@ -440,6 +448,7 @@ class Agent:
         self.destination = agent_pos
         temp_x = pack("i", agent_pos[0])[0:3]
         temp_y = pack("i", agent_pos[1])[0:3]
+        self.helping = True
 
         agent_data = b'\x40'
         agent_data += temp_x + temp_y
