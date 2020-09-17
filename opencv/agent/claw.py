@@ -62,6 +62,7 @@ class Claw:
                     agent.send_box_data(box)
                     agent.con.writeCharacteristic(agent.chars.claw, b'\x04', withResponse=True)
                     agent.destination = (50, 50)
+                    agent.con.writeCharacteristic(agent.chars.com, b'\x3422', withResponse=True)
                     if box.leader is None:
                         box.leader = self.agent
                     else:
@@ -71,6 +72,9 @@ class Claw:
                                 ant.con.writeCharacteristic(ant.chars.claw, b'\x06', withResponse=True)
                                 self.leader_pos = ant.triangle.center
                     break
+                elif distance_to_box < 160:
+                    agent.destination = box.pos
+                    agent.box_found = True
             return boxes
 
         if self.status == b'\x04':

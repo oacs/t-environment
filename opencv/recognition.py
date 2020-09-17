@@ -8,9 +8,10 @@ from opencv.forms.utils import distance
 
 class Recognition:
 
-    def __init__(self, screen_dimension, scan_radius=60):
+    def __init__(self, screen_dimension, scan_radius=190):
         self.area = np.zeros((screen_dimension[1], screen_dimension[0], 3), np.uint8)
         self.scan_radius = scan_radius
+        self.screen_dimension = screen_dimension
         self.new_pos = (-1,-1)
 
     def update_vision(self, pos):

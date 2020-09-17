@@ -175,8 +175,9 @@ class EnvProcess:
         self.run = False
         self.config_zone = None
         self.boxes = list()
-        self.boxes.append(Box((150, 36), 0, None, 2))
+        self.boxes.append(Box((250, 36), 0, None, 2))
         self.walls = list()
+        self.walls.append(Wall((70,200), (200, 230), 0))
 
     def start_thread(self, main_queue: Queue):
         ''' statr a thread '''
@@ -276,6 +277,7 @@ class EnvProcess:
             if triangle.is_valid():
                 if agent.is_leader and agent.state == State.waiting_for_box:
                     agent.destination = self.boxes[0].pos
+                    agent.send_dist(self.boxes[0].pos)
                     agent.state = State.going_to_box
                     agent.send_box_data(self.boxes[0])
                 agent.update(triangle,

@@ -3,14 +3,14 @@
     {
       "color": "P",
       "config": {
-        "speeds": [0, 0, 0],
+        "speeds": [20, 80, 80],
         "alt_forward": false,
         "alt_rotation": true
       },
       "address": "DD:DE:63:3A:25:CB"
     },
     {
-      "color": "R",
+      "color": "G",
       "config": {
          "alt_forward": false,
         "alt_rotation": true,
@@ -19,9 +19,9 @@
       "address": "D9:D1:81:1D:F4:26"
     },
     {
-      "color": "G",
+      "color": "",
       "config": {
-        "speeds": [0, 0, 0],
+        "speeds": [29, 73, 76],
         "alt_forward": true,
         "alt_rotation": false
       },
@@ -29,5 +29,5 @@
     }
   ],
   "max_ants": 3,
-  "possible_colors": [ "R" ]
+  "possible_colors": [ "G", "P" ]
 }

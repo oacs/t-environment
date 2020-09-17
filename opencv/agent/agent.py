@@ -95,6 +95,8 @@ class Agent:
     is_leader: bool
     state: State
     recognition: Recognition
+    last_update_collision: bool
+    box_found : bool
 
     def __init__(self, address, color, config, screen_dimensions):
         # self.radius is an instance variable
@@ -126,6 +128,8 @@ class Agent:
         self.sensor_lines = list()
         self.com_queue = list()
         self.bugging = False
+        self.last_update_collision = time.time()
+        self.box_found = False
 
     def connect(self):
         """ Connect to to ant and se the config """
@@ -200,7 +204,7 @@ class Agent:
         if self.destination and self.destination[0] != -1:
             new_rotation = self.triangle.calc_rotation(
                 self.destination)
-            if self.rotation == 360 or abs(self.rotation - new_rotation) > 3:
+            if self.rotation == 360 or True:
                 self.rotation = new_rotation
                 b_rotation = pack("ff", self.rotation, 0)
                 self.con.writeCharacteristic(
@@ -221,12 +225,14 @@ class Agent:
         self.collide = False
 
         self.sensor_lines.clear()
-        for angle in range(0, 360, 15):
+        for angle in range(0, 360, 30):
 
-            cart_pos = pol2cart(angle, 150)
+            cart_pos = pol2cart(angle, 120)
             cart_pos = (
                 int(max(0, cart_pos[0] + self.xy[0])),
                 int(max(cart_pos[1] + self.xy[1], 0)))
+            cart_pos = (max(min(cart_pos[0], self.recognition.screen_dimension[0] - 40), 40),
+                        max(min(cart_pos[1], self.recognition.screen_dimension[1] - 40), 40))
             temp_intercepts = False
             for wall in walls:
                 intercepts, interception = wall.get_intersection(
@@ -286,10 +292,9 @@ class Agent:
             self.chars.config, ("s" + speed_type).encode() + b_dest,
             withResponse=True)
 
-    def update(self, triangle, time_since_last_update, pheromones, walls: Wall, borders ):
+    def update(self, triangle, time_since_last_update, pheromones, walls: Wall, borders):
         """ Update the sensors of the agent via BLE"""
 
-        time_to_update = time.time()
         # if triangle.is_valid() and self.triangle.is_valid():
         #     self.speed_rotation = distance(
         #         self.triangle.top, triangle.top) / time_since_last_update
@@ -315,29 +320,31 @@ class Agent:
         self.read_message()
         self.recognition.update_vision(self.triangle.center)
         new_dest = self.recognition.get_close_unknown_position(self.triangle.position)
-        if new_dest[0] != -1 and self.claw.box_id == -1 and self.helping is False and self.destination != (50, 50) :
-            new_dest = (max(40, min((borders[0]-40), new_dest[0])), max(40, min(borders[1] -40, new_dest[1])) )
+        if new_dest[0] != -1 and self.claw.box_id == -1 and self.helping is False and self.destination != (
+                50, 50) and self.bugging is False and self.box_found is False:
+            new_dest = (max(40, min((borders[0] - 40), new_dest[0])), max(40, min(borders[1] - 40, new_dest[1])))
             self.destination = new_dest
         # if abs(distance(prev_position, new_position)) > 6:
         self.xy = self.triangle.center
+        self.send_rotation()
         self.send_pos()
         self.distance_sensor(walls)
-        if self.collide:
+        time_to_update = time.time()
+        if self.collide and time_to_update - self.last_update_collision > 1 and self.claw.box_id != -1 and self.destination != (
+        50, 50):
             self.send_distance_lines()
-        # else:
-        #     self.xy = prev_position
-        self.send_rotation()
-        self.claw.pos = self.triangle.center
+            self.last_update_collision = time_to_update
         time_to_update = time.time() - time_to_update
-        # print(time_to_update)
+        print(time_to_update)
+        # else:
+        #    self.xy = prev_position
+        self.claw.pos = self.triangle.center
 
     def read_message(self):
         """ Check the com char of the agent and process the msg """
 
         message = self.con.readCharacteristic(
             self.chars.com)
-
-
 
         # print(message[0], b'\x11', message, message[0] == b'\x11')
         if message[0] == 17:
@@ -424,8 +431,8 @@ class Agent:
             ((temp_x, temp_y), intercepts) = self.sensor_lines[i]
             temp_x = pack("i", temp_x)
             temp_y = pack("i", temp_y)
-            temp_x = temp_x[0:3]
-            temp_y = temp_y[0:3]
+            temp_x = temp_x[0:2]
+            temp_y = temp_y[0:2]
             b_distance_lines += temp_x
             b_distance_lines += temp_y
 
