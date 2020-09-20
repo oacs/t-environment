@@ -22,6 +22,7 @@ from opencv.agent.pheromone import (Pheromone, get_close_pheromones,
 from opencv.box import Box
 from opencv.forms.triangle import Triangle, distance
 from opencv.forms.utils import FONT, pol2cart
+from opencv.recognition import Recognition
 from opencv.wall import Wall
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
@@ -93,18 +94,23 @@ class Agent:
     collide: bool
     is_leader: bool
     state: State
+    recognition: Recognition
+    last_update_collision: bool
+    box_found : bool
 
-    def __init__(self, address, color, config):
+    def __init__(self, address, color, config, screen_dimensions):
         # self.radius is an instance variable
         self.configured = False
         self.address = address
         self.connected = False
         self.last_update = time.time()
         self.chars = self.connect()
+        self.helping = False
         if self.connected:
             self.color = color
             self.set_config(config)
             self.claw_distance = 15
+            self.recognition = Recognition(screen_dimensions)
             self.claw = Claw((0, 0), self.color)
             # self.claw.box_id = 0
             # self.claw.status = b'\x04'
@@ -121,6 +127,9 @@ class Agent:
         self.pheromones = queue.Queue()
         self.sensor_lines = list()
         self.com_queue = list()
+        self.bugging = False
+        self.last_update_collision = time.time()
+        self.box_found = False
 
     def connect(self):
         """ Connect to to ant and se the config """
@@ -157,7 +166,7 @@ class Agent:
 
         LOGGER.debug("setting cng")
 
-        bytes =str.encode("cng")
+        bytes = str.encode("cng")
         bytes += b'\x01'
         bytes += pack("i", config["speeds"][0])[0:1]
         bytes += pack("i", config["speeds"][1])[0:1]
@@ -181,8 +190,9 @@ class Agent:
         try:
             b_position = pack(
                 "ii", self.triangle.position[0], self.triangle.position[1])
+            trim_position = bytes([b_position[0], b_position[1], b_position[4], b_position[5]])
             self.con.writeCharacteristic(
-                self.chars.position, b_position, withResponse=True)
+                self.chars.position, trim_position, withResponse=True)
         except bluepy.btle.BTLEGattError:
             print("ERROR on GAT sending pos")
         except bluepy.btle.BTLEException as err:
@@ -194,7 +204,7 @@ class Agent:
         if self.destination and self.destination[0] != -1:
             new_rotation = self.triangle.calc_rotation(
                 self.destination)
-            if self.rotation == 360 or abs(self.rotation - new_rotation) > 3:
+            if self.rotation == 360 or True:
                 self.rotation = new_rotation
                 b_rotation = pack("ff", self.rotation, 0)
                 self.con.writeCharacteristic(
@@ -215,12 +225,14 @@ class Agent:
         self.collide = False
 
         self.sensor_lines.clear()
-        for angle in range(0, 360, 15):
+        for angle in range(0, 360, 30):
 
-            cart_pos = pol2cart(angle, 150)
+            cart_pos = pol2cart(angle, 120)
             cart_pos = (
                 int(max(0, cart_pos[0] + self.xy[0])),
                 int(max(cart_pos[1] + self.xy[1], 0)))
+            cart_pos = (max(min(cart_pos[0], self.recognition.screen_dimension[0] - 40), 40),
+                        max(min(cart_pos[1], self.recognition.screen_dimension[1] - 40), 40))
             temp_intercepts = False
             for wall in walls:
                 intercepts, interception = wall.get_intersection(
@@ -262,8 +274,8 @@ class Agent:
         for i in range(0, length):
             temp_x = pack("i", pheromones[i].x)
             temp_y = pack("i", pheromones[i].y)
-            temp_x = temp_x[0:3]
-            temp_y = temp_y[0:3]
+            temp_x = temp_x[0:2]
+            temp_y = temp_y[0:2]
             b_pheromones += temp_x
             b_pheromones += temp_y
 
@@ -280,10 +292,9 @@ class Agent:
             self.chars.config, ("s" + speed_type).encode() + b_dest,
             withResponse=True)
 
-    def update(self, triangle, time_since_last_update, pheromones, walls: Wall):
+    def update(self, triangle, time_since_last_update, pheromones, walls: Wall, borders):
         """ Update the sensors of the agent via BLE"""
 
-        time_to_update = time.time()
         # if triangle.is_valid() and self.triangle.is_valid():
         #     self.speed_rotation = distance(
         #         self.triangle.top, triangle.top) / time_since_last_update
@@ -307,31 +318,33 @@ class Agent:
             self.sending.pheromone = "none"
 
         self.read_message()
+        self.recognition.update_vision(self.triangle.center)
+        new_dest = self.recognition.get_close_unknown_position(self.triangle.position)
+        if new_dest[0] != -1 and self.claw.box_id == -1 and self.helping is False and self.destination != (
+                50, 50) and self.bugging is False and self.box_found is False:
+            new_dest = (max(40, min((borders[0] - 40), new_dest[0])), max(40, min(borders[1] - 40, new_dest[1])))
+            self.destination = new_dest
         # if abs(distance(prev_position, new_position)) > 6:
         self.xy = self.triangle.center
+        self.send_rotation()
         self.send_pos()
         self.distance_sensor(walls)
-        if self.collide:
+        time_to_update = time.time()
+        if self.collide and time_to_update - self.last_update_collision > 1 and self.claw.box_id != -1 and self.destination != (
+        50, 50):
             self.send_distance_lines()
-        # else:
-        #     self.xy = prev_position
-        self.send_rotation()
-        self.claw.pos = self.triangle.center
+            self.last_update_collision = time_to_update
         time_to_update = time.time() - time_to_update
-        # print(time_to_update)
+        print(time_to_update)
+        # else:
+        #    self.xy = prev_position
+        self.claw.pos = self.triangle.center
 
     def read_message(self):
         """ Check the com char of the agent and process the msg """
 
         message = self.con.readCharacteristic(
             self.chars.com)
-
-        # if have the format => number,number
-        if message.find(0x2c) != -1:
-            self.sending.rotation = True
-            # Read dist
-            self.destination = (
-                unpack("i", message[0:4])[0], unpack("i", message[5:9])[0])
 
         # print(message[0], b'\x11', message, message[0] == b'\x11')
         if message[0] == 17:
@@ -340,13 +353,22 @@ class Agent:
                 Pheromone(self.xy[0], self.xy[1], intense, message[1]))
         elif message[0] == 18:
             self.sending.pheromone = get_pheromone_type(message[1])
-        elif message[0] in range(32, 38):
+        elif message[0] == 19:
+            self.bugging = False
+        elif message[0] in range(32, 50):
             self.com_queue.append(message)
+        elif message.find(0x2c) != -1:
+            # self.sending.rotation = True
+            # Read dist
+            self.destination = (
+                unpack("i", message[0:4])[0], unpack("i", message[5:9])[0])
+            self.bugging = True
         else:
             return
+        # if have the format => number,number
 
         self.con.writeCharacteristic(
-            self.chars.com, "0".encode(), withResponse=True)
+            self.chars.com, b'\x00', withResponse=True)
 
     def draw_lines(self, frame, offset=(0, 0)):
         """ Draw the destination with a circle and a line from top to pnt """
@@ -376,15 +398,18 @@ class Agent:
 
     def draw_distance(self, frame, offset=(0, 0)):
         """ Draw the distance with a circle and a line from top to pnt """
-        if self.destination[0] != -1:
-            cv2.line(frame, tuple(map(sum, zip(self.triangle.center, offset))),
-                     tuple(map(sum, zip(self.triangle.top, offset))), (200, 150, 50), 2)
-            cv2.putText(frame,
-                        ('%.2f' % (distance(self.triangle.center,
-                                            self.destination) / 5)) + " cm",
-                        self.destination,
-                        FONT, 1,
-                        255)
+        try:
+            if self.destination[0] != -1:
+                cv2.line(frame, tuple(map(sum, zip(self.triangle.center, offset))),
+                         tuple(map(sum, zip(self.triangle.top, offset))), (200, 150, 50), 2)
+                cv2.putText(frame,
+                            ('%.2f' % (distance(self.triangle.center,
+                                                self.destination) / 5)) + " cm",
+                            self.destination,
+                            FONT, 1,
+                            255)
+        except AttributeError:
+            pass
 
     def draw_rotation(self, frame, offset=(0, 0)):
         """ Draw the rotation with a circle and a line from top to pnt """
@@ -395,8 +420,7 @@ class Agent:
                      tuple(map(sum, zip(self.triangle.top, offset))), (200, 150, 50), 2)
             cv2.putText(frame,
                         ('%.2f' % self.rotation) +
-                        " C*", self.destination, FONT, 1,
-                        255)
+                        " C*", self.destination, FONT, 1, 255)
 
     def send_distance_lines(self):
         """ send distance lines """
@@ -407,8 +431,8 @@ class Agent:
             ((temp_x, temp_y), intercepts) = self.sensor_lines[i]
             temp_x = pack("i", temp_x)
             temp_y = pack("i", temp_y)
-            temp_x = temp_x[0:3]
-            temp_y = temp_y[0:3]
+            temp_x = temp_x[0:2]
+            temp_y = temp_y[0:2]
             b_distance_lines += temp_x
             b_distance_lines += temp_y
 
@@ -431,10 +455,11 @@ class Agent:
         self.destination = agent_pos
         temp_x = pack("i", agent_pos[0])[0:3]
         temp_y = pack("i", agent_pos[1])[0:3]
+        self.helping = True
 
         agent_data = b'\x40'
         agent_data += temp_x + temp_y
-        self.con.writeCharacteristic(self.chars.com,agent_data, withResponse=True )
+        self.con.writeCharacteristic(self.chars.com, agent_data, withResponse=True)
 
 
 def calc_bytes_of_length(array: list, min_length=20):

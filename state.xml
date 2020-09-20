@@ -1,15 +1,1 @@
-<simulation>
-    <boxes>
-        <box id="0" r="25" w="1" x="435" y="316" />
-    </boxes>
-    <walls>
-        <wall id="0">
-            <pnt x="508" y="228" />
-            <pnt x="260" y="184" />
-        </wall>
-        <wall id="1">
-            <pnt x="291" y="373" />
-            <pnt x="331" y="284" />
-        </wall>
-    </walls>
-</simulation>
+<simulation><boxes><box id="0" r="10" w="2" x="150" y="36" /></boxes><walls><wall id="0"><pnt x="70" y="200" /><pnt x="200" y="230" /></wall></walls></simulation>

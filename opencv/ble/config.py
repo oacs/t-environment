@@ -19,12 +19,12 @@ def return_address(ant: Agent):
     return ant.address
 
 
-def find_ant(know_ants: list, color: ColorFilter, possible_ants  ):
+def find_ant(know_ants: list, color: ColorFilter, possible_ants, screen_dimensions):
     """ Find ants by color and connect to it"""
     ant_address = map(return_address, know_ants)
     for ant in possible_ants:
         if ant["address"] not in ant_address and ant["color"] is color:
-            ant_obj = Agent(ant["address"], color, ant["config"])
+            ant_obj = Agent(ant["address"], color, ant["config"], screen_dimensions)
             if ant_obj.connected:
                 return ant_obj
 

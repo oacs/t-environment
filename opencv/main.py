@@ -175,8 +175,9 @@ class EnvProcess:
         self.run = False
         self.config_zone = None
         self.boxes = list()
-        self.boxes.append(Box((150, 36), 0, None, 2))
+        self.boxes.append(Box((250, 36), 0, None, 2))
         self.walls = list()
+        self.walls.append(Wall((70,200), (200, 230), 0))
 
     def start_thread(self, main_queue: Queue):
         ''' statr a thread '''
@@ -198,6 +199,9 @@ class EnvProcess:
                 while len(self.borders) != 2:
                     self.borders = check_for_borders(self.video)[0]
 
+                self.borders_dimension_max = (max(self.borders[0][0], self.borders[1][0]), max(self.borders[0][1], self.borders[1][1]))
+                self.borders_dimension_min = (min(self.borders[0][0], self.borders[1][0]), min(self.borders[0][1], self.borders[1][1]))
+                self.borders_dimension = ( self.borders_dimension_max[0] - self.borders_dimension_min[0], self.borders_dimension_max[1] - self.borders_dimension_min[1])
                 main_queue.put(output_message(
                     "Setting config zone (" +
                     str(self.borders[1][0] + 150) + ", "
@@ -243,7 +247,7 @@ class EnvProcess:
                     main_queue.put(output_message(
                         "Possible agent added " + color, "info"))
                     new_ant: Agent
-                    new_ant = find_ant(self.ants, color, self.possible_ants)
+                    new_ant = find_ant(self.ants, color, self.possible_ants, self.borders_dimension)
                     self.possible_colors.remove(color)
                     if new_ant is not None and new_ant.connected:
                         main_queue.put(output_message(
@@ -273,11 +277,12 @@ class EnvProcess:
             if triangle.is_valid():
                 if agent.is_leader and agent.state == State.waiting_for_box:
                     agent.destination = self.boxes[0].pos
+                    agent.send_dist(self.boxes[0].pos)
                     agent.state = State.going_to_box
                     agent.send_box_data(self.boxes[0])
                 agent.update(triangle,
                              time_since_last_update,
-                             self.pheromones, self.walls)
+                             self.pheromones, self.walls, self.borders_dimension)
                 self.boxes = agent.claw.update(agent.con.readCharacteristic(
                     agent.chars.claw), self.boxes, agent, self.ants)
                 for event in agent.com_queue:

@@ -3,23 +3,25 @@
     {
       "color": "P",
       "config": {
-        "speeds": [30, 80, 80],
+        "speeds": [20, 80, 80],
         "alt_forward": false,
-        "alt_rotation": false
+        "alt_rotation": true
       },
       "address": "DD:DE:63:3A:25:CB"
     },
     {
-      "color": "R",
-      "config": {
-        "speeds": [30, 50, 60]
-      },
-      "address": "FD:19:B1:33:A9:9E"
-    },
-    {
       "color": "G",
       "config": {
-        "speeds": [30, 60, 70],
+         "alt_forward": false,
+        "alt_rotation": true,
+      "speeds": [0, 0, 0]
+      },
+      "address": "D9:D1:81:1D:F4:26"
+    },
+    {
+      "color": "",
+      "config": {
+        "speeds": [29, 73, 76],
         "alt_forward": true,
         "alt_rotation": false
       },
@@ -27,5 +29,5 @@
     }
   ],
   "max_ants": 3,
-  "possible_colors": ["P", "G" ]
+  "possible_colors": [ "G", "P" ]
 }

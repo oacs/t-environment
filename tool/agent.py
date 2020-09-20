@@ -2,10 +2,15 @@ import time
 from struct import unpack
 
 import PySimpleGUI as sg
-
+import cv2
 from opencv.agent.agent import Agent
 from opencv.main import EnvProcess
 
+nav_graph = sg.Graph((600, 450), (0, 450), (600, 0), key='NAV-GRAPH',
+                  enable_events=True, drag_submits=True,
+                  metadata={
+                      "a_id": None,
+                  })
 agent_gui = sg.Column([
     [sg.Text("Agent color: "), sg.Text("", key="agent-color")],
     [sg.Text("Agent pos: "), sg.Text("", key="agent-pos", size=(20, None))],
@@ -29,10 +34,20 @@ agent_gui = sg.Column([
      sg.Button(key='agent-base-speed-f', visible=True)],
     [sg.Text("Agent debug msg: "),
      sg.Text("", key="agent-debug", size=(20, None))],
+    [nav_graph]
 ], key="agent-column", metadata=-1)
 
 last_update = 0
 
+def update_image(frame, window, graph):
+    img_bytes = cv2.imencode('.png', frame)[1].tobytes()  # ditto
+    if window[graph].metadata["a_id"]:
+        # delete previous image
+        window[graph].delete_figure(window[graph].metadata["a_id"])
+    window[graph].metadata["a_id"] = window[graph].draw_image(
+        data=img_bytes, location=(0, 0))  # draw new image
+    # move image to the "bottom" of all other drawings
+    window[graph].TKCanvas.tag_lower(window[graph].metadata["a_id"])
 
 def agent_gui_event(event: str, values: dict, window: sg.Window, env_process: EnvProcess):
     if window["agent-column"].metadata != -1:
@@ -52,7 +67,8 @@ def agent_gui_event(event: str, values: dict, window: sg.Window, env_process: En
         #     debug = ant.con.readCharacteristic(ant.chars.debug)
         #     window["agent-debug"].update(unpack("i", debug))
         #     window.metadata["last_update"] = int(round(time.time() * 1000))
-
+        frame = env_process.ants[window["agent-column"].metadata].recognition.area
+        update_image(frame, window, "NAV-GRAPH")
         if event in ("agent-base-speed-c", "agent-base-speed-r", "agent-base-speed-f"):
             ant: Agent
             ant = env_process.ants[window["agent-column"].metadata]
