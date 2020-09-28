@@ -65,6 +65,10 @@ class Claw:
                     agent.con.writeCharacteristic(agent.chars.com, b'\x3422', withResponse=True)
                     if box.leader is None:
                         box.leader = self.agent
+                        for ant in ants:
+                            if ant.color != box.leader:
+                                ant.dest = agent.triangle.center
+                                self.leader_pos = ant.triangle.center
                     else:
                         self.leader = box.leader
                         for ant in ants:

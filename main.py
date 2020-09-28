@@ -21,7 +21,7 @@ ACTIONS = sg.Column(layout=[ACTION_LAYOUT],
 LAYOUT = [
     [MENU_EL],
     [ACTIONS],
-    [sg.Column(layout=[[graph_tabs], [cli]]) , TOOLS_GUI],
+    [sg.Column(layout=[[graph_tabs], [cli, TOOLS_GUI]]) , ],
 ]
 
 # Create the Window
@@ -38,18 +38,6 @@ GRAPH_ELEM.bind('<Motion>', "-MOUSE-MOTION")
 MAIN_QUEUE = queue.Queue()
 ENV_PROCESS = EnvProcess(2, 0, 3, read_config())
 ENV_PROCESS.start_thread(MAIN_QUEUE)
-
-# window["MAIN-GRAPH"].set_size((env_process.video.width,
-# env_process.video.height))
-# window["COLORS-GRAPH"].set_size((env_process.video.width,
-# env_process.video.height))
-# window["BORDERS-GRAPH"].set_size((env_process.video.width,
-# env_process.video.height))
-# print((env_process.video.width, env_process.video.height))
-
-# cli.set_size((env_process.video.width, env_process.video.height))
-# actions.expand(expand_x=True, expand_y=False, expand_row=False)
-# cli.expand(expand_y=True)
 cli_output: sg.Multiline = WINDOW["cli-output"]
 cli_output.expand(expand_x=True, expand_row=False, expand_y=True)
 

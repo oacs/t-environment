@@ -7,21 +7,21 @@
         "alt_forward": false,
         "alt_rotation": true
       },
-      "address": "DD:DE:63:3A:25:CB"
-    },
-    {
-      "color": "G",
-      "config": {
-         "alt_forward": false,
-        "alt_rotation": true,
-      "speeds": [0, 0, 0]
-      },
       "address": "D9:D1:81:1D:F4:26"
     },
     {
       "color": "",
       "config": {
-        "speeds": [29, 73, 76],
+         "alt_forward": false,
+        "alt_rotation": true,
+      "speeds": [0, 0, 0]
+      },
+      "address": "DD:DE:63:3A:25:CB"
+    },
+    {
+      "color": "G",
+      "config": {
+        "speeds": [30, 70, 73],
         "alt_forward": true,
         "alt_rotation": false
       },

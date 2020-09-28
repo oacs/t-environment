@@ -175,9 +175,11 @@ class EnvProcess:
         self.run = False
         self.config_zone = None
         self.boxes = list()
-        self.boxes.append(Box((250, 36), 0, None, 2))
+        self.boxes.append(Box((280, 196), 0, None, 2))
+        # self.boxes.append(Box((300, 86), 0, None, 2))
+        # self.boxes.append(Box((150, 250), 1, None, 1))
         self.walls = list()
-        self.walls.append(Wall((70,200), (200, 230), 0))
+        # self.walls.append(Wall((180,150), (280, 250), 0))
 
     def start_thread(self, main_queue: Queue):
         ''' statr a thread '''
@@ -359,7 +361,7 @@ class EnvProcess:
         for pheromone in self.pheromones:
             frame = cv2.circle(frame, (pheromone.x + min(self.borders[1][0], self.borders[0][0]),
                                        pheromone.y + min(self.borders[1][1], self.borders[0][1])),
-                               pheromone.intense, (255, 140, 20))
+                               pheromone.intense, (255, 140, 20),-1 )
 
         return frame
 

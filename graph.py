@@ -30,7 +30,6 @@ borders_graph = Graph((600, 450), (0, 450), (600, 0), key='BORDERS-GRAPH',
                           "a_id": None,
                       })
 
-
 graph_keys = ["MAIN-GRAPH", "GRAPH-MOUSE-MOTION", "-TAB-GROUP-"]
 
 
@@ -54,16 +53,7 @@ def process_click(type: int, coord: tuple, env_process: EnvProcess, window: Wind
             y_offset < y < max(env_process.borders[1][1],
                                env_process.borders[0][1])):
 
-        if window["GRAPH-BOX"].metadata == "activated":
-            if type is 2:
-                env_process.boxes.append(Box((x- x_offset, y- y_offset), len(env_process.boxes)))
-        elif window["GRAPH-WALL"].metadata == "activated":
-            if type == 1:
-                window.metadata["tempPos"] = (x- x_offset, y- y_offset)
-            else:
-                env_process.walls.append(Wall(window.metadata["tempPos"], (x- x_offset, y- y_offset), len(env_process.walls)))
-        else:
-            env_process.pheromones.append(
+        env_process.pheromones.append(
                 Pheromone(x - x_offset,
                           y - y_offset, 5, b"0x12"))
 
@@ -96,69 +86,48 @@ def graph_events(event: str, values: dict, window: Window, env_process: EnvProce
             window["GRAPH-BOX"].update(image_filename="assets/img/box-" + window["GRAPH-BOX"].metadata + ".png")
 
         window["GRAPH-WALL"].update(image_filename="assets/img/brick-" + window["GRAPH-WALL"].metadata + ".png")
-    if values["-TAB-GROUP-"] == "-MAIN-TAB-":
-        frame = env_process.read()
-        if frame is not None:
-            if event == 'MAIN-GRAPH':
-                process_click(1, values["MAIN-GRAPH"], env_process, window)
-            elif event == 'MAIN-GRAPH+UP':
-                process_click(2, values["MAIN-GRAPH"], env_process, window)
+    frame = env_process.read()
+    frame1 = env_process.read()
+    frame2 = env_process.read()
+    if frame is not None:
+        if event == 'MAIN-GRAPH':
+            process_click(1, values["MAIN-GRAPH"], env_process, window)
+        elif event == 'MAIN-GRAPH+UP':
+            process_click(2, values["MAIN-GRAPH"], env_process, window)
 
-            elif event == "MAIN-GRAPH-MOUSE-MOTION":
-                window["MAIN-GRAPH"].metadata["x"] = window["MAIN-GRAPH"].user_bind_event.x
-                window["MAIN-GRAPH"].metadata["y"] = window["MAIN-GRAPH"].user_bind_event.y
-            if env_process.run:
-                if len(env_process.borders) ==2 :
-                    frame = env_process.draw_xy(frame, window["MAIN-GRAPH"].metadata["x"] - env_process.borders_dimension_min[0],
+        elif event == "MAIN-GRAPH-MOUSE-MOTION":
+            window["MAIN-GRAPH"].metadata["x"] = window["MAIN-GRAPH"].user_bind_event.x
+            window["MAIN-GRAPH"].metadata["y"] = window["MAIN-GRAPH"].user_bind_event.y
+        if env_process.run:
+            if len(env_process.borders) == 2:
+                frame = env_process.draw_xy(frame,
+                                            window["MAIN-GRAPH"].metadata["x"] - env_process.borders_dimension_min[0],
                                             window["MAIN-GRAPH"].metadata["y"] - env_process.borders_dimension_min[1])
-                if len(env_process.borders) > 1:
-                    offset = (min(env_process.borders[1][0], env_process.borders[0][0]),
-                              min(env_process.borders[1][1], env_process.borders[0][1]))
-                frame = env_process.draw_borders(frame)
-                frame = env_process.draw_config(frame)
-                frame = env_process.draw_pheromones(frame)
+            if len(env_process.borders) > 1:
+                offset = (min(env_process.borders[1][0], env_process.borders[0][0]),
+                          min(env_process.borders[1][1], env_process.borders[0][1]))
+            frame = env_process.draw_borders(frame)
+            frame1= env_process.draw_borders(frame1)
+            frame = env_process.draw_config(frame)
+            frame2 = env_process.draw_pheromones(frame2)
 
-                if len(env_process.borders) > 1:
-                    offset = (min(env_process.borders[1][0], env_process.borders[0][0]),
-                              min(env_process.borders[1][1], env_process.borders[0][1]))
-                    for ant in env_process.ants:
-                        frame = ant.claw.draw_claw(frame,env_process.ants, offset)
-                        ant.draw_dest(frame, offset)
-                        ant.draw_lines(frame, offset)
-                    for box in env_process.boxes:
-                        frame = box.draw(frame, offset)
-                    for wall in env_process.walls:
-                        frame = wall.draw(frame, offset)
-                    cv2.circle(frame, tuple(
-                        map(sum, zip((50,50), offset))), 5, 200, 1)
+            if len(env_process.borders) > 1:
+                offset = (min(env_process.borders[1][0], env_process.borders[0][0]),
+                          min(env_process.borders[1][1], env_process.borders[0][1]))
+                for ant in env_process.ants:
+                    frame = ant.claw.draw_claw(frame, env_process.ants, offset)
+                    ant.draw_dest(frame1, offset)
+                    ant.draw_lines(frame1, offset)
+                for box in env_process.boxes:
+                    frame = box.draw(frame, offset)
+                for wall in env_process.walls:
+                    frame = wall.draw(frame, offset)
+                cv2.circle(frame, tuple(
+                    map(sum, zip((50, 50), offset))), 5, 200, 1)
 
-            update_image(frame, window, "MAIN-GRAPH")
-    if values["-TAB-GROUP-"] == "-COLORS-TAB-":
-        frame = env_process.read()
-        frame = ColorFilter(
-            Colors.unset,
-            values["mask-min-hue"],
-            values["mask-max-hue"],
-            values["mask-min-sat"],
-            values["mask-max-sat"],
-            values["mask-min-val"],
-            values["mask-max-val"],
-            0, 0, 0
-        ).get_mask(frame)
-        update_image(frame, window, "COLORS-GRAPH")
-
-    if values["-TAB-GROUP-"] == "-BORDERS-TAB-":
-        frame = get_rect_borders(env_process.read())[1]
-        update_image(frame, window, "BORDERS-GRAPH")
-
-
-    if event == "-TAB-GROUP-":
-        if values["-TAB-GROUP-"] == "-COLORS-TAB-":
-            window["mask-column"].update(visible=True)
-            window["agent-column"].update(visible=False)
-        else:
-            window["agent-column"].update(visible=True)
-            window["mask-column"].update(visible=False)
+    update_image(frame, window, "MAIN-GRAPH")
+    update_image(frame1, window, "COLORS-GRAPH")
+    update_image(frame2, window, "BORDERS-GRAPH")
 
 
 def update_image(frame, window, graph):
@@ -192,14 +161,8 @@ tab_main_layout = [[main_graph, Column([
     metadata="unactivated",
     background_color=[PRIMARY])]]
 
-tab_colors_layout = [[colors_graph]]
-tab_border_layout = [[borders_graph]]
-
 # The TabgGroup layout - it must contain only Tabs
-tab_group_layout = [
-    [Tab('Main', tab_main_layout, font='Courier 15', key='-MAIN-TAB-', pad=(0, 0), background_color=[PRIMARY]),
-     Tab('Colors', tab_colors_layout, key='-COLORS-TAB-', pad=(0, 0), background_color=[PRIMARY]),
-     Tab('Borders', tab_border_layout, key='-NAV-TAB-', pad=(0, 0), background_color=[PRIMARY]), ]]
+tab_group_layout = [[main_graph, colors_graph, borders_graph]]
 
 # The window layout - defines the entire window
-graph_tabs = TabGroup(tab_group_layout, enable_events=True, key='-TAB-GROUP-', background_color=[PRIMARY])
+graph_tabs = Column(layout=tab_group_layout)

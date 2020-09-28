@@ -10,6 +10,7 @@ class Recognition:
 
     def __init__(self, screen_dimension, scan_radius=190):
         self.area = np.zeros((screen_dimension[1], screen_dimension[0], 3), np.uint8)
+        # self.area = cv2.rectangle(self.area, (0, 0), (180, 350), (254, 254, 254))
         self.scan_radius = scan_radius
         self.screen_dimension = screen_dimension
         self.new_pos = (-1,-1)
